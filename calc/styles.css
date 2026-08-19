@@ -1028,10 +1028,13 @@ body {
 	padding-bottom: 1em;
 	text-align: center;
 }
+/* inline-block, not block, so it can sit right after .BreakTableRowLast on
+   the same line when there's room - only drops to a line of its own when
+   there genuinely isn't, via ordinary inline wrapping. */
 #BreakSumLong {
-	margin: auto;
-	padding: 0.5em 0em;
-	text-align: center;
+	display: inline-block;
+	vertical-align: bottom;
+	padding: 0.5em 0 0.5em 0.6em;
 }
 .SimpleBreakChart {
 	max-width: 800px;
@@ -1042,33 +1045,94 @@ body {
 	text-align: center;
 }
 #BreakTableContainer {
-	padding: 0.4em 0.4em 0.4em 0.8em;
-	border: 1px solid var(--border-dark-accent);
+	position: relative;
+	padding: 0.6em 0.8em;
+	border: 1px solid transparent; /* visible only in the tinted look, see .breakdownTinted below - kept as a real (transparent) border rather than none so the box doesn't shift size when it toggles */
 	width: -webkit-fit-content;
 	width: -moz-fit-content;
+	text-align: center; /* centers .BreakSumLong when it wraps onto a line by itself */
+	cursor: pointer; /* the whole box toggles the tinted background - see onclick in breakdown.js */
+	transition: background 0.25s ease, border-color 0.25s ease;
+}
+#BreakTableContainer.breakdownTinted {
+	border-color: var(--border-dark-accent); /* same border #ChartSpot (the Cipher Chart) uses */
+}
+/* Whichever row of a long breakdown ends up last (tagged in breakdown.js,
+   a plain string search rather than tracked through the LTR/RTL branches)
+   switches from block to inline-table, so #BreakSumLong immediately after it
+   can share its line when there is room instead of always starting a new
+   one - ordinary inline wrapping drops it to its own line only when it
+   genuinely does not fit. */
+.BreakTableRowLast {
+	display: inline-table;
+	vertical-align: bottom;
 }
 .BreakRTL {
 	padding: 0.4em 0.8em 0.4em 0.4em !important;
 }
+/* Letters take the current cypher's own colour (curCiphCol, set inline per
+   cell in breakdown.js) in the plainer look. No background of their own by
+   default; the plainer look (box unclicked) brings back a faint shared
+   block behind each letter/value pair instead - table cells sit flush
+   against each other (border-spacing: 0 below), so it reads as one quiet
+   block behind each word rather than two separate rows. */
 .BreakChar {
-	font-size: 115%;
+	font-size: 110%;
 	font-weight: 500;
-	padding-right: 2px;
-	padding-left: 2px;
+	padding: 3px 3px 1px 3px;
 	font-family: var(--font-family-mono), "Arial", sans-serif;
 }
+#BreakTableContainer:not(.breakdownTinted) .BreakChar,
+#BreakTableContainer:not(.breakdownTinted) .BreakVal,
+#BreakTableContainer:not(.breakdownTinted) .BreakValDark {
+	background: hsl(0 0% 100% / 0.05);
+}
+/* The classic gradient look (.breakdownTinted) keeps cypher-coloured letters
+   on a short phrase (.BreakShort, breakdown.js) - that's the whole point of
+   the tinted look - but a long phrase mostly green turns unreadable, so
+   .BreakLong forces letters white there instead and the word sums carry
+   green in their place. !important overrides the inline cypher colour
+   breakdown.js sets on each letter cell - simpler than threading a second
+   conditional through every render branch that builds one for the same
+   result. The short-phrase total (.BreakPhraseSum) takes the cypher colour
+   inline (breakdown.js); the long-phrase one (.breakSumDark) stays white
+   regardless, since it sits over more green already. */
+#BreakTableContainer.breakdownTinted.BreakLong .BreakChar {
+	color: var(--font-white-1) !important;
+}
+/* word sums run the opposite of whichever colour the letters took, so the two
+   never compete for the same colour: white letters (.BreakLong, above) get
+   cypher-coloured sums (set inline in breakdown.js, wordSumColStyle) : green
+   letters (.BreakShort) get white sums, which is just .BreakWordSum's base
+   colour below with no override needed here. */
+/* the cypher name under the grid - shown only in the classic (.breakdownTinted) look */
+.BreakCipherName {
+	text-align: center;
+	font-size: 100%;
+	font-weight: 600;
+	padding-top: 0.3em;
+}
+.BreakEqualsSign {
+	font-size: 60%;
+	font-weight: 500;
+	color: var(--font-white-3);
+}
 .breakCipher {
-	font-size: 115%;
+	font-size: 100%;
 	font-weight: 500;
 	display: inline-block;
 }
-.breakSum, .breakSumDark {
-	font-size: 125%;
+.breakSum {
+	font-size: 155%;
 	color: var(--font-white-1);
-	font-weight: 600;
+	font-weight: 700;
 }
+/* the in-box long-phrase total - always white now (not cypher-coloured, see
+   breakdown.js), same as .BreakPhraseSum below */
 .breakSumDark {
-	color: var(--font-white-2);
+	font-size: 115%;
+	color: var(--font-white-1);
+	font-weight: 700;
 }
 .breakPhrase {
 	font-size: 125%;
@@ -1085,11 +1149,30 @@ body {
 	font-weight: 500;
 	display: inline-block;
 }
+/* white by default (equation-line context etc); the tinted short-phrase look
+   below overrides this with the cypher colour, set inline in breakdown.js */
 .BreakPhraseSum {
-	font-weight: 500;
-	font-size: 175%;
+	font-weight: 700;
+	font-size: 115%;
+	color: var(--font-white-1);
 	padding-left: 10px;
-	padding-right: 10px;
+	padding-right: 8px;
+}
+/* the tinted look drops the "=" (breakdown.js) and reads as a standalone
+   result, so a short phrase's total (one row, nothing else competing for
+   attention) can afford to be bigger than the letters feeding it - lighter
+   than default bold, or it reads as too heavy at this size. Takes the cypher
+   colour inline (breakdown.js). */
+#BreakTableContainer.breakdownTinted .BreakPhraseSum {
+	font-size: 150%;
+	font-weight: 600;
+}
+/* a long phrase's total sits paired with the cypher name at the bottom of the
+   box (breakdown.js), so it stays close to that name's scale rather than
+   towering over it - stays white regardless of cypher colour, unlike the
+   short-phrase total above. */
+#BreakTableContainer.breakdownTinted .breakSumDark {
+	font-size: 130%;
 }
 .BreakTable, .BreakTableRow {
 	text-align: center;
@@ -1104,21 +1187,21 @@ body {
 .BreakTableRow {
 	padding: 0em 0.75em;
 }
+.BreakWordSum {
+	font-size: 108%;
+	font-weight: 700;
+	color: var(--font-white-1);
+	padding-right: 5px;
+	padding-left: 5px;
+}
 .BreakVal, .BreakValDark {
 	color: var(--focus-outline);
     font-weight: 600;
-	font-size: 74%;
-	padding-right: 3px;
-	padding-left: 3px;
+	font-size: 68%;
+	padding: 1px 3px 3px 3px;
 }
 .BreakValDark {
 	color: var(--break-val-accent);
-}
-.BreakWordSum {
-	font-size: 115%;
-	padding-right: 5px;
-	padding-left: 5px;
-	font-weight: 500;
 }
 #ChartTable {
 	border-spacing: 0px;
@@ -1162,17 +1245,6 @@ body {
 	.ChartVal {
 		font-size: 110%;
 	}
-}
-.CipherEnd, .CipherEndRTL {
-	font-size: 90%;
-	padding-top: 2px;
-	padding-bottom: 2px;
-	font-weight: 500;
-	padding-right: 0.5em;
-}
-.CipherEndRTL {
-	padding-right: 0em;
-	padding-left: 0.5em;
 }
 .LetterCounts {
 	color: var(--font-white-2);
@@ -1330,6 +1402,72 @@ body {
 	padding: 0em 0.5em 0em 0.5em;
 	font-size: 110%;
 }
+/* Per-row delete x. .histRow carries position:relative so this positions
+   against the whole row (true top-right corner of the entry) even though it
+   lives inside .hP - .hP itself is left position:static on purpose, or the
+   containing block would be just that cell. position:absolute takes it out
+   of flow entirely, so revealing it never moves, resizes or reflows the
+   table - see updateHistoryTable() in calc.js. */
+.histRow { position: relative; }
+/* themed rather than left as the browser default blue ring, but still a
+   real outline - tapping/tabbing to an entry should look focused, not just
+   quietly reveal a × with no other feedback. .hP (per-row) and .histClearTab
+   (the header row's whole-table equivalent, see updateHistoryTable()) are
+   the two tabindex holders this can land on. */
+.hP:focus,
+.histClearTab:focus {
+	outline: 2px solid var(--focus-outline);
+	outline-offset: -2px;
+}
+.histDelX {
+	position: absolute;
+	top: -0.4em;
+	right: -0.4em;
+	z-index: 1;
+	background: var(--menu-bg-accent);
+	border: 1px solid var(--border-dark-accent);
+	border-radius: 50%;
+	color: hsl(5 70% 68%);
+	cursor: pointer;
+	font-size: 85%;
+	line-height: 1;
+	/* the hit area is a generous touch target; the glyph inside it stays small */
+	width: 1.7em;
+	height: 1.7em;
+	opacity: 0;
+	/* auto, not none, even while invisible - hovering this exact spot (the
+	   far right of the row, where it sits) is what reveals it below. A plain
+	   opacity-only hide would leave it unreachable by the mouse until already
+	   visible, which never happens. */
+	pointer-events: auto;
+	transition: opacity 0.12s ease;
+}
+/* Hovering the x's own spot at the far right of the row reveals it - not
+   hovering anywhere in the row, which read as it popping up unpredictably
+   while just mousing over phrase or cypher values. Keyboard focus (Tab, or
+   a tap on a touch device - .hP or .histClearTab has tabindex="0", see
+   updateHistoryTable()) still reveals it too, since there is no separate
+   control for a phone to reach it with any more. Scoped to .histRow, not
+   the specific tabindex holder, so the same rule covers both the per-row x
+   and the header row's whole-table x. */
+.histDelX:hover,
+.histRow:focus-within .histDelX {
+	opacity: 1;
+}
+.histDelX:hover { background-color: hsla(5 60% 45% / 0.3); color: hsl(5 70% 78%); }
+/* armed: the next tap deletes. Same idea and colour as .profileArmed - one
+   more click carries it out, rather than leaning on window.confirm(), which
+   browsers can silently suppress. */
+.histDelX.profileArmed {
+	width: auto;
+	border-radius: 4px;
+	padding: 0.2em 0.5em;
+	background-color: hsl(5 60% 42%);
+	border-color: hsl(5 65% 58%);
+	color: #fff;
+	font-weight: 600;
+	font-size: 78%;
+}
 .mP, .mPQ { /* history table - top left cell */
 	font-weight: 500;
 	font-size: 125%;
@@ -1467,7 +1605,18 @@ body {
 	float: left;
 	width: 70%;
 }
+/* blank gap between the category groups - see createCiphersMenu() in calc.js */
+.ciphCatDivider { height: 0.6em; }
 .ciphDetailCol #menuCiphCatDetailsArea { margin: 0em 0.25em 0em 1.25em; }
+/* per-category lead-in note text, also reused between the pinned-cypher
+   tables further down the same list - see cipherCatSpecial in calc.js */
+.ciphCatNote {
+	font-style: italic;
+	font-size: 85%;
+	color: var(--separator-accent);
+	padding-bottom: 0.5em;
+}
+.ciphCatNote:not(:first-child) { margin-top: 0.5em; }
 .ciphToolRow {
 	clear: both;
 	padding-top: 0.5em;
@@ -1744,16 +1893,6 @@ body {
 	font-weight: 600;
 	color: var(--font-white-3);
 	text-align: center;
-}
-
-/* Credit line at the top of the About menu - text, not a link */
-.aboutCredit {
-	font-size: 82%;
-	color: var(--font-white-3);
-	text-align: center;
-	padding: 0.15em 0.4em 0.55em 0.4em;
-	margin-bottom: 0.35em;
-	border-bottom: 1px solid var(--separator-accent2);
 }
 
 .dropdown:hover .dropdown-content, .dropdown:hover .dropdown-content-opt {display: block;}
@@ -2412,6 +2551,54 @@ body {
 	text-wrap: balance;
 	max-width: 46ch;
 }
+/* Gematro credit - two short paragraphs, so it sizes to them rather than
+   being stretched down 80% of the screen with the rest left empty */
+.quickGuide.creditPanel {
+	height: auto;
+	max-height: 80%;
+	top: 14%;
+}
+@media (max-width: 911px) { /* mobile - matches the contact panel's exception */
+	.quickGuide.creditPanel {
+		height: auto !important;
+		max-height: 80% !important;
+	}
+}
+.creditPanel p {
+	text-wrap: pretty;
+	text-wrap: balance;
+	max-width: 46ch;
+}
+.creditPanel a { color: var(--font-white-1); }
+
+/* Cyphers (Info) - no topic bar or Special Thanks footer eating into the
+   panel's height here, so its body can use nearly all of it. */
+.cyphersInfoBody {
+	max-height: 68vh;
+}
+
+/* the three addresses at the top of the Contact panel - see contactEmailList() */
+.contactEmails {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35em;
+	padding: 0.2em 0 1em 0;
+	margin-bottom: 0.8em;
+	border-bottom: 1px solid var(--separator-accent2);
+}
+.contactEmailRow { display: flex; align-items: baseline; gap: 0.6em; font-size: 92%; }
+.contactEmailLabel {
+	flex: 0 0 7em;
+	font-weight: 600;
+	color: var(--font-white-3);
+}
+.contactEmailRow a { color: var(--font-white-1); }
+.contactEmailRow a:hover { text-decoration: underline; }
+@media (max-width: 911px) { /* mobile: label above address rather than a cramped row */
+	.contactEmailRow { flex-direction: column; gap: 0.1em; }
+	.contactEmailLabel { flex-basis: auto; }
+}
+
 .contactField { padding-bottom: 0.8em; }
 .contactLabel {
 	display: block;
@@ -2464,6 +2651,44 @@ body {
 .noScroll {
 	overflow: hidden;
 }
+
+/* Cipher Information & Suggested Bibliography, inside the Ciphers guide topic
+   - see quickGuideTopics in quick-guide.js. Native <details>/<summary>, not a
+   custom widget: no JS needed for the expand/collapse itself, it is keyboard
+   operable for free, and it is the closest thing to an existing "accordion"
+   this guide has to be consistent with. */
+.qgAcc {
+	border: 1px solid var(--border-dark-accent);
+	border-radius: 4px;
+	margin-bottom: 0.6em;
+	padding: 0.3em 0.7em;
+}
+.qgAcc summary {
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 95%;
+	color: var(--font-white-1);
+	padding: 0.3em 0;
+	list-style: revert;
+}
+.qgAcc summary::marker { color: var(--font-white-3); }
+.qgAcc[open] summary { border-bottom: 1px solid var(--separator-accent2); margin-bottom: 0.5em; }
+.qgAccBody { font-size: 92%; padding: 0.2em 0 0.4em 0; }
+.qgAccBody p { margin: 0.3em 0 0.6em 0; }
+.qgAccBody ul { margin: 0.3em 0; padding-left: 1.2em; }
+.qgAccBody li { margin-bottom: 0.7em; }
+.qgAccBody .qgNote { display: block; margin-top: 0.15em; }
+
+/* per-cypher toggle nested inside a category's .qgAcc, in "Cyphers (Info)" -
+   smaller and less boxy than its parent so the category/cypher hierarchy
+   stays readable at a glance. */
+.qgAccNested {
+	border-color: var(--separator-accent2);
+	margin: 0.4em 0;
+	padding: 0.15em 0.6em;
+}
+.qgAccNested summary { font-size: 90%; font-weight: 500; padding: 0.2em 0; }
+.qgAccNested .qgAccBody { font-size: 95%; }
 .qgBold, .qgBold2, .qgBoldCoin {
 	font-size: 100%;
 	font-weight: 500;
@@ -2568,4 +2793,147 @@ input[type=checkbox] {
 	width: 0px;
 	height: 0px;
 	border: solid 4px var(--checkmark-accent);
+}
+
+/* ===================== Focus mode (screenshot-friendly) =====================
+   #focusModeBtn is a fixed element outside #calcMain (index.html) so it is
+   never wiped by a menu rebuild and stays reachable even once the nav row
+   underneath it is hidden. toggleFocusMode() (calc.js) just flips one class
+   on <body> - nothing here deletes or resets anything, so turning it back
+   off restores the page exactly as it was. */
+.focusModeBtn {
+	position: fixed;
+	top: 0.6em;
+	right: 0.6em;
+	z-index: 600;
+	width: 2.2em;
+	height: 2.2em;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	border: none;
+	color: var(--font-white-2);
+	cursor: pointer;
+	opacity: 0.55;
+	transition: opacity 0.2s ease, color 0.2s ease;
+	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); /* keeps the glyph readable over light rain/backdrops, background stays transparent */
+}
+.focusModeBtn svg { width: 65%; height: 65%; }
+.focusModeBtn:hover { opacity: 1; }
+body.focusMode .focusModeBtn {
+	opacity: 0.85;
+	color: var(--focus-outline);
+}
+
+/* Mirrors .focusModeBtn on the opposite corner - opens #focusOptionsPanel,
+   which chooses what Focus Mode shows besides the equation. Only makes sense
+   once you are actually in Focus Mode, so unlike .focusModeBtn it stays
+   hidden the rest of the time rather than sitting there always-on. */
+.focusOptionsBtn {
+	display: none;
+	position: fixed;
+	top: 0.6em;
+	left: 0.6em;
+	z-index: 600;
+	width: 2.2em;
+	height: 2.2em;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	border: none;
+	color: var(--font-white-2);
+	cursor: pointer;
+	opacity: 0.85;
+	transition: opacity 0.2s ease, color 0.2s ease;
+	filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+.focusOptionsBtn svg { width: 65%; height: 65%; }
+.focusOptionsBtn:hover { opacity: 1; }
+body.focusMode .focusOptionsBtn { display: flex; }
+
+.focusOptionsPanel {
+	position: fixed;
+	top: 3em;
+	left: 0.6em;
+	z-index: 601;
+	background: var(--menu-bg-accent2);
+	border: 1px solid var(--border-dark-accent);
+	border-radius: 6px;
+	padding: 0.6em 0.9em;
+	min-width: 165px;
+}
+.focusOptionsTitle {
+	font-size: 85%;
+	font-weight: 600;
+	color: var(--font-white-2);
+	padding-bottom: 0.4em;
+	margin-bottom: 0.3em;
+	border-bottom: 1px solid var(--separator-accent2);
+}
+/* combined with .chkLabel, which sets display/position/padding-left for the
+   custom checkbox - only adding vertical spacing here so that is not undone */
+.focusOptionRow {
+	font-size: 90%;
+	padding-top: 0.25em;
+	padding-bottom: 0.25em;
+}
+
+body.focusMode #calcOptionsPanel,
+body.focusMode #inputArea {
+	display: none !important;
+}
+body.focusMode #calcMain {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+body.focusMode #BreakdownDetails {
+	transform: scale(1.12);
+}
+@media (max-width: 600px) {
+	body.focusMode #BreakdownDetails { transform: scale(1.05); }
+}
+
+/* The enabled-cyphers badges and letter/word count are noise next to the
+   result no matter what else is showing, so those stay hidden
+   unconditionally. Everything else is opt-in per #focusOptionsPanel, toggled
+   by the focusHide* classes below (applyFocusModeVisibility() in calc.js):
+     - "Word sums" is the equation line - "phrase = total (cipher)" - not
+       the in-grid per-word totals (52, 71, 37), which are part of
+       "Breakdown" below along with the letters and grid total.
+     - "Breakdown" is the whole letter-by-letter grid: letters, their
+       values, the per-word totals, and the grid's own total.
+   Defaults match what Focus Mode always showed before this panel existed
+   (word sums shown, breakdown hidden), so nobody sees a change until they
+   open it. */
+body.focusMode #enabledCiphTable,
+body.focusMode .LetterCounts {
+	display: none !important;
+}
+body.focusMode #BreakTableContainer {
+	border: none;
+	box-shadow: none;
+	background: none;
+	padding: 0;
+	cursor: default;
+}
+body.focusMode.focusHideWordSums #SimpleBreak,
+body.focusMode.focusHideWordSums #BreakSumLong,
+body.focusMode.focusHideWordSums .SimpleBreakChart,
+body.focusMode.focusHideWordSums .SimpleBreakChartLong {
+	display: none !important;
+}
+body.focusMode.focusHideBreakdown #BreakTableContainer .BreakChar,
+body.focusMode.focusHideBreakdown #BreakTableContainer .BreakVal,
+body.focusMode.focusHideBreakdown #BreakTableContainer .BreakValDark,
+body.focusMode.focusHideBreakdown #BreakTableContainer .BreakWordSum,
+body.focusMode.focusHideBreakdown #BreakTableContainer .BreakPhraseSum {
+	display: none !important;
+}
+body.focusMode.focusHideCipherChart #ChartSpotScroll {
+	display: none !important;
+}
+body.focusMode.focusHideHistoryTable #HistoryTableArea {
+	display: none !important;
 }

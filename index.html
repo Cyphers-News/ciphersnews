@@ -2,29 +2,38 @@
 <head>
 <title>Calculator</title>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://nominatim.openstreetmap.org https://maps.googleapis.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com; form-action 'self'; base-uri 'none'; object-src 'none'">
 <meta name="viewport" content="width=520, maximum-scale=1, user-scalable=no">
 <link rel="shortcut icon" type="image/x-icon" href="res/favicon.png">
 
 <!-- Android Web App - Add to Home Screen -->
 <link rel="manifest" href="manifest.json">
 
-<script src="lib/jquery.min.js?v=20260806g"></script>
-<script src="lib/supabase.min.js?v=20260806g"></script>
+<!-- Loaded before the scripts below so the stylesheets start downloading
+     immediately instead of queueing behind four blocking script fetches -
+     the scripts don't touch layout until later, but a <link> after them
+     used to wait its turn anyway. -->
+<link rel="stylesheet" type="text/css" href="calc/styles.css?v=20260809a">
+<link rel="stylesheet" type="text/css" href="auth/auth.css?v=20260809a">
+
+<script src="lib/jquery.min.js?v=20260809a"></script>
+<script src="lib/supabase.min.js?v=20260809a"></script>
 <!-- html2canvas v1.0.0-alpha.12 -->
 
-<script src="calc/gematria.js?v=20260806g"></script>
-<script src="calc/calc.js?v=20260806g"></script>
-<script src="calc/init-variables.js?v=20260806g"></script>
-<script src="calc/ciphers.js?v=20260806g"></script>
-
-<link rel="stylesheet" type="text/css" href="calc/styles.css?v=20260806g">
-<link rel="stylesheet" type="text/css" href="auth/auth.css?v=20260806g">
+<script src="calc/gematria.js?v=20260809a"></script>
+<script src="calc/calc.js?v=20260809a"></script>
+<script src="calc/init-variables.js?v=20260809a"></script>
+<script src="calc/ciphers.js?v=20260809a"></script>
 
 <script>
 window.onpaint = function() {
 	updateInterfaceColor(true); // update interface color (first run)
 }
-$(window).load(function(){
+// .on("load"), not .load(fn) — the shorthand was removed in jQuery 3, where
+// .load() resolves to the AJAX method instead and calls .indexOf on its first
+// argument. Passing a function there threw "e.indexOf is not a function" and
+// the loading overlay never faded out.
+$(window).on("load", function(){
 	$("#loader").delay(287).fadeOut("fast");
 });
 </script>
@@ -37,6 +46,32 @@ $(window).load(function(){
 
 <div id="loader"></div>
 <canvas id="canv"></canvas>
+
+<!-- Fixed so it survives whichever menu is rebuilding #calcOptionsPanel, and
+     stays reachable even once focus mode has hidden that whole row. -->
+<button id="focusModeBtn" class="focusModeBtn" type="button" title="Focus mode: hide the menu and phrase box for a clean screenshot (tap again to restore)" aria-label="Toggle focus mode" aria-pressed="false" onclick="toggleFocusMode()">
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		<path d="M12 15V3"></path>
+		<path d="M7.5 7.5L12 3l4.5 4.5"></path>
+		<path d="M4 13v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"></path>
+	</svg>
+</button>
+
+<!-- Mirrors #focusModeBtn on the opposite corner - opens a small panel
+     choosing what Focus Mode shows besides the equation. -->
+<button id="focusOptionsBtn" class="focusOptionsBtn" type="button" title="Choose what Focus Mode shows" aria-label="Focus mode display options" onclick="toggleFocusOptionsPanel()">
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		<line x1="4" y1="21" x2="4" y2="14"></line>
+		<line x1="4" y1="10" x2="4" y2="3"></line>
+		<line x1="12" y1="21" x2="12" y2="12"></line>
+		<line x1="12" y1="8" x2="12" y2="3"></line>
+		<line x1="20" y1="21" x2="20" y2="16"></line>
+		<line x1="20" y1="12" x2="20" y2="3"></line>
+		<line x1="1" y1="14" x2="7" y2="14"></line>
+		<line x1="9" y1="8" x2="15" y2="8"></line>
+		<line x1="17" y1="16" x2="23" y2="16"></line>
+	</svg>
+</button>
 
 <!-- preload font -->
 <span style="font-family: 'Roboto Mono';"></span>
@@ -83,39 +118,40 @@ $(window).load(function(){
 
 <span id="loadPanel"></span>
 
-<script src="calc/breakdown.js?v=20260806g"></script>
+<script src="calc/breakdown.js?v=20260809a"></script>
 
-<script src="calc/highlighter.js?v=20260806g"></script>
-<script src="calc/export.js?v=20260806g"></script>
-<script src="calc/export-csv.js?v=20260806g"></script>
-<script src="calc/num-prop.js?v=20260806g"></script>
-<script src="calc/edit-ciphers.js?v=20260806g"></script>
-<script src="calc/date-calc.js?v=20260806g"></script>
-<script src="calc/astrology.js?v=20260806g"></script>
-<script src="calc/profile-tab.js?v=20260806g"></script>
-<script src="calc/profile-chart.js?v=20260806g"></script>
-<script src="calc/friends-tab.js?v=20260806g"></script>
-<script src="calc/database.js?v=20260806g"></script>
-<script src="calc/quick-guide.js?v=20260806g"></script>
+<script src="calc/highlighter.js?v=20260809a"></script>
+<script src="calc/export.js?v=20260809a"></script>
+<script src="calc/export-csv.js?v=20260809a"></script>
+<script src="calc/num-prop.js?v=20260809a"></script>
+<script src="calc/edit-ciphers.js?v=20260809a"></script>
+<script src="calc/date-calc.js?v=20260809a"></script>
+<script src="calc/astrology.js?v=20260809a"></script>
+<script src="calc/profile-tab.js?v=20260809a"></script>
+<script src="calc/profile-chart.js?v=20260809a"></script>
+<script src="calc/friends-tab.js?v=20260809a"></script>
+<script src="calc/database.js?v=20260809a"></script>
+<script src="calc/quick-guide.js?v=20260809a"></script>
 
-<script src="calc/localstorage.js?v=20260806g"></script>
-<script src="calc/encoding.js?v=20260806g"></script>
-<script src="calc/encoding-ciphers.js?v=20260806g"></script>
+<script src="calc/localstorage.js?v=20260809a"></script>
+<script src="calc/encoding.js?v=20260809a"></script>
+<script src="calc/encoding-ciphers.js?v=20260809a"></script>
 
-<script src="calc/coderain.js?v=20260806g"></script>
+<script src="calc/coderain.js?v=20260809a"></script>
 
 <!-- after every script that declares an option, before anything that restores one -->
-<script src="calc/reset-defaults.js?v=20260806g"></script>
+<script src="calc/reset-defaults.js?v=20260809a"></script>
 
-<script src="auth/supabase-config.js?v=20260806g"></script>
-<script src="auth/auth.js?v=20260806g"></script>
-<script src="auth/auth-ui.js?v=20260806g"></script>
-<script src="auth/history-sync.js?v=20260806g"></script>
-<script src="auth/workspace-sync.js?v=20260806g"></script>
-<script src="auth/profile-features.js?v=20260806g"></script>
-<script src="auth/friends.js?v=20260806g"></script>
-<script src="auth/chat.js?v=20260806g"></script>
-<script src="lib/html2canvas.min.js?v=20260806g"></script>
+<script src="auth/supabase-config.js?v=20260809a"></script>
+<script src="auth/auth.js?v=20260809a"></script>
+<script src="auth/auth-ui.js?v=20260809a"></script>
+<script src="auth/history-sync.js?v=20260809a"></script>
+<script src="auth/workspace-sync.js?v=20260809a"></script>
+<script src="auth/profile-features.js?v=20260809a"></script>
+<script src="auth/friends.js?v=20260809a"></script>
+<script src="auth/chat.js?v=20260809a"></script>
+<script src="auth/admin.js?v=20260809a"></script>
+<script src="lib/html2canvas.min.js?v=20260809a"></script>
 
 <!-- Initialzie the calculator.  This needs to run before loading a database or theme. -->
 <script>
@@ -141,8 +177,12 @@ $(window).load(function(){
 <!-- To change the word matching database reference a different file in the script below or append lines to db.txt -->
 
 <script>
-	var database = loadFile('db.txt');
-	importFileAction(database, true);
+	// async: the calculator (and code rain, and login) is already interactive
+	// by the time this resolves, instead of the whole tab freezing until a
+	// multi-megabyte file finishes downloading. See loadFileAsync().
+	loadFileAsync('db.txt', function (database) {
+		if (database !== null) importFileAction(database, true);
+	});
 </script>
 
 <!-- AUTO LOAD THEME -->

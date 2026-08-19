@@ -10,6 +10,32 @@ var profileMenuOpened = false
 var profileTabActive = "presets" // presets first: it is the tab you act from
 var profileSubmitMap = {}   // phrase -> submission id, for rows already published
 
+// ---- hide published (Saved tab) ----------------------------------------
+//
+// A per-browser display preference, not account data - it is about how this
+// screen looks, not what is saved, so localStorage is enough and there is no
+// migration to run. Defaults to hidden: a published entry already has its own
+// place (the leaderboard, and the "Published, no longer saved" section for
+// the ones that left Saved entirely), so leaving every one of them expanded
+// inside Saved as well is the thing that made the tab feel enormous.
+var PROFILE_HIDE_PUBLISHED_KEY = "profileHidePublished"
+
+function profileHidePublishedGet() {
+	try {
+		var v = window.localStorage.getItem(PROFILE_HIDE_PUBLISHED_KEY)
+		return v === null ? true : v === "1" // unset = default = hidden
+	} catch (e) { return true }
+}
+
+function profileHidePublishedSet(hidden) {
+	try { window.localStorage.setItem(PROFILE_HIDE_PUBLISHED_KEY, hidden ? "1" : "0") } catch (e) {}
+}
+
+function profileTogglePublished() {
+	profileHidePublishedSet(!profileHidePublishedGet())
+	renderProfileEntries()
+}
+
 function toggleProfileMenu() {
 	if (!profileMenuOpened) {
 		closeAllOpenedMenus()
@@ -30,6 +56,13 @@ function renderProfilePanel() {
 	var area = document.getElementById("profileMenuArea")
 	if (area === null) return
 
+	// Submit was folded into Saved: a phrase and whether it is published are
+	// one thing, and two tabs meant publishing in one and withdrawing in the
+	// other. Anything still asking for the old tab lands on Saved - done here
+	// rather than in the dispatcher below, so the tab row draws the right
+	// button as highlighted on the same pass.
+	if (profileTabActive === "submissions") profileTabActive = "entries"
+
 	var o = '<div class="colorControlsBG profileBG">'
 	o += '<input class="closeMenuBtn" type="button" value="&#215;" onclick="closeAllOpenedMenus()">'
 
@@ -47,15 +80,25 @@ function renderProfilePanel() {
 		return
 	}
 
+	// Ordered in runs - what you work with, who you work with, then the account
+	// itself - and separated by a gap rather than by a heading. An earlier
+	// version put a "WORKSPACE" / "COMMUNITY" / "ACCOUNT" label at the head of
+	// each run. Two things were wrong with it: the labels sat inline at tab
+	// size and looked clickable when they were not, and because this row wraps
+	// they did not stay at the head of their run anyway - ACCOUNT would land
+	// mid-line beside Community's tabs. Whitespace cannot be clicked, and it
+	// wraps without lying.
 	o += '<div class="profileTabs">'
 	o += profileTabBtn("presets", "✅ Presets")
 	o += profileTabBtn("csv", "📄 CSV")
 	o += profileTabBtn("entries", "💾 Saved")
-	o += profileTabBtn("submissions", "📤 Submit")
 	o += profileTabBtn("leaderboard", "🏆 Leaders")
-	o += profileTabBtn("friends", "📧 Friends")
 	o += profileTabBtn("chart", "🔮 Chart")
-	o += profileTabBtn("account", "⚙ Account")
+
+	o += profileTabBtn("friends", "📧 Friends", "profileTabRun")
+
+
+	o += profileTabBtn("account", "⚙ Account", "profileTabRun")
 	o += '</div>'
 
 	o += '<div id="profileBody" class="profileBody"><div class="profileLoading">Loading…</div></div>'
@@ -69,16 +112,16 @@ function renderProfilePanel() {
 	else if (profileTabActive === "presets") renderProfilePresets()
 	else if (profileTabActive === "csv") renderProfileCsv()
 	else if (profileTabActive === "chart") renderProfileChart()
-	else if (profileTabActive === "submissions") renderProfileSubmissions()
 	else if (profileTabActive === "leaderboard") renderProfileLeaderboard()
 	else if (profileTabActive === "friends") renderProfileFriends()
 	else renderProfileAccount()
 }
 
-function profileTabBtn(id, label) {
+// extra is for profileTabRun, which puts a gap before the first tab of a run
+function profileTabBtn(id, label, extra) {
 	var on = (profileTabActive === id) ? " profileTabOn" : ""
 	var elId = "profileTab" + id.charAt(0).toUpperCase() + id.slice(1)
-	return '<input class="intBtn3 profileTab'+on+'" id="'+elId+'" type="button" value="'+label+'" onclick="profileSetTab(&quot;'+id+'&quot;)">'
+	return '<input class="intBtn3 profileTab'+on+(extra ? " " + extra : "")+'" id="'+elId+'" type="button" value="'+label+'" onclick="profileSetTab(&quot;'+id+'&quot;)">'
 }
 
 // Every tab loads over the network, so a slow tab's response can land after
@@ -90,7 +133,34 @@ var profileRenderSeq = 0
 function profileBody(html, token) {
 	if (token !== undefined && token !== profileRenderSeq) return // stale response
 	var el = document.getElementById("profileBody")
-	if (el !== null) el.innerHTML = html
+	if (el === null) return
+
+	// Every tab here re-renders by replacing this whole element, including
+	// whatever input the user is mid-typing into (most noticeably the Saved
+	// search box, which re-renders on a debounce timer while typing is still
+	// going). That drops focus and the cursor position, so the id and
+	// selection are captured before the swap and restored on the new node
+	// after - otherwise every pause in typing kicks the cursor out and the
+	// next character has to be preceded by clicking back in.
+	var active = document.activeElement
+	var restoreId = null, selStart = null, selEnd = null
+	if (active && el.contains(active) && active.id && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+		restoreId = active.id
+		selStart = active.selectionStart
+		selEnd = active.selectionEnd
+	}
+
+	el.innerHTML = html
+
+	if (restoreId !== null) {
+		var revived = document.getElementById(restoreId)
+		if (revived !== null) {
+			revived.focus()
+			if (typeof selStart === "number" && typeof revived.setSelectionRange === "function") {
+				revived.setSelectionRange(selStart, selEnd)
+			}
+		}
+	}
 }
 
 function profileErr(err) {
@@ -115,49 +185,134 @@ function renderProfileEntries() {
 	// which is why it took a second open to show up.
 	var ready = (typeof histSyncFlush === "function") ? histSyncFlush() : Promise.resolve()
 
-	ready.then(function () { return entriesSearch(term, 200) }).then(function (rows) {
+	// Both halves at once. Saved and Submit used to be separate tabs, which
+	// meant publishing a phrase in one and withdrawing it in the other, with
+	// no single place that answered "what have I got, and which of it is
+	// public".
+	Promise.all([
+		ready.then(function () { return entriesSearch(term, 200) }),
+		submissionsList(200)
+	]).then(function (both) {
+		var rows = both[0], subs = both[1]
+
+		var byPhrase = {}
+		subs.forEach(function (sub) { byPhrase[sub.phrase] = sub })
+		profileSubmitMap = byPhrase
+
+		// Whether the box, as it stands, would add a new phrase rather than just
+		// filter - a non-empty term with no exact (case-insensitive) match among
+		// what came back. Decides both whether the add button is live and what
+		// Enter does, so the two never disagree about what a submit will do.
+		var trimmed = term.trim()
+		var exactHit = trimmed !== "" && rows.some(function (r) { return r.phrase.toLowerCase() === trimmed.toLowerCase() })
+		var canAdd = trimmed !== "" && !exactHit
+
 		var o = ''
 		o += '<div class="profileSearchRow">'
-		o += '<input type="text" id="profileSearch" class="profileSearchInput" placeholder="Search your saved phrases…" value="'+authEsc(term)+'" oninput="profileSearchDebounced()">'
+		o += '<input type="text" id="profileSearch" class="profileSearchInput" placeholder="Search, or type a new phrase and press Enter…" value="'+authEsc(term)+'" oninput="profilePreviewUpdate();profileSearchDebounced()" onkeydown="if(event.keyCode===13)profileAddFromSearch()">'
+		o += '<button type="button" class="profileMiniBtn profileAddBtn" id="profileAddBtn" onclick="profileAddFromSearch()" title="Save this as a new phrase"'+(canAdd ? '' : ' disabled')+'>+ Add</button>'
 		o += '<span class="profileCount">'+rows.length+(rows.length === 200 ? "+" : "")+'</span>'
 		o += '</div>'
+		// Live value preview - calculated with whatever cipher the calculator
+		// itself has open, so the number here is never a second, different
+		// answer from the one the phrase would get once it is actually entered.
+		o += '<div class="profilePreview" id="profilePreview">'+profilePreviewHtml(term)+'</div>'
 
-		if (rows.length === 0) {
-			o += '<div class="profileNote">'+(term ? "Nothing matches that." : "No saved phrases yet. Anything you enter in the calculator is saved here automatically.")+'</div>'
+		if (rows.length === 0 && subs.length === 0) {
+			o += '<div class="profileNote">'+(term ? "Nothing matches that. Press Enter to save it as a new phrase." : "No saved phrases yet. Anything you enter in the calculator is saved here automatically.")+'</div>'
 			profileBody(o, tok)
 			return
 		}
 
-		var phrases = rows.map(function (r) { return r.phrase })
-		submissionsFor(phrases).then(function (map) {
-			profileSubmitMap = map
+		// Published entries get their own space back: a phrase that is already
+		// public has the leaderboard as its home, so by default this list shows
+		// only what is still just yours, with a one-line toggle to bring the rest
+		// back rather than every row carrying a badge and a Withdraw button.
+		var unpublished = [], published = []
+		rows.forEach(function (r) {
+			(byPhrase[r.phrase] ? published : unpublished).push(r)
+		})
+
+		function renderEntryRow(r) {
+			var sub = byPhrase[r.phrase]
+			var refused = profileSubmitRejected[r.phrase]
+			var s = ''
+			s += '<div class="profileRow'+(refused ? ' profileRowRefused' : '')+'">'
+			s += '<span class="profileRowPhrase" onclick="profileUsePhrase(&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;)" title="Send to the calculator">'+authEsc(r.phrase)+'</span>'
+			s += '<span class="profileRowActions">'
+			if (sub) {
+				// published: show what it was published as, and the way back out
+				s += '<span class="profileBadge profileBadgeOk" title="Published to the leaderboard">'
+				s += sub.cipher ? authEsc(sub.cipher) + (sub.value !== null && sub.value !== undefined ? ' ' + sub.value : '') : 'published'
+				s += '</span>'
+				s += '<button class="profileMiniBtn profileMiniDanger" onclick="profileWithdraw(&quot;'+sub.id+'&quot;)" title="Remove it from the leaderboard. The phrase stays saved.">Withdraw</button>'
+			} else if (refused) {
+				s += '<span class="profileBadge profileBadgeBad" title="'+authEsc(refused)+'">blocked</span>'
+			} else {
+				// the cipher arrives prefilled from whatever is selected, so
+				// publishing stays one click unless you want to change it
+				s += profileCipherSelect(r.id)
+				s += '<button class="profileMiniBtn" onclick="profileSubmit(&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;,&quot;'+r.id+'&quot;)" title="Publish this phrase to the leaderboard">Submit</button>'
+			}
+			s += '<button class="profileMiniBtn profileMiniDanger" onclick="profileDeleteEntry(&quot;'+r.id+'&quot;,&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;)" title="Remove from your saved history">&#215;</button>'
+			s += '</span>'
+			if (refused) s += '<div class="profileRowWhy">'+authEsc(refused)+'</div>'
+			s += '</div>'
+			return s
+		}
+
+		if (unpublished.length) {
 			o += '<div class="profileList">'
-			rows.forEach(function (r) {
-				var published = map[r.phrase] !== undefined
-				var refused = profileSubmitRejected[r.phrase]
-				o += '<div class="profileRow'+(refused ? ' profileRowRefused' : '')+'">'
-				o += '<span class="profileRowPhrase" onclick="profileUsePhrase(&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;)" title="Send to the calculator">'+authEsc(r.phrase)+'</span>'
+			unpublished.forEach(function (r) { o += renderEntryRow(r) })
+			o += '</div>'
+		}
+
+		// A submission outlives the saved phrase it came from - deleting the
+		// entry does not withdraw it. Without this those become unwithdrawable,
+		// which is the one thing the old Submit tab was still needed for.
+		var orphans = subs.filter(function (sub) {
+			if (term && sub.phrase.toLowerCase().indexOf(term.toLowerCase()) === -1) return false
+			for (var i = 0; i < rows.length; i++) if (rows[i].phrase === sub.phrase) return false
+			return true
+		})
+
+		var hidePublished = profileHidePublishedGet()
+		var publishedTotal = published.length + orphans.length
+		if (publishedTotal) {
+			o += '<div class="profilePublishedToggle" onclick="profileTogglePublished()">'
+			o += (hidePublished ? '&#9656; Show' : '&#9662; Hide') + ' published (' + publishedTotal + ')'
+			o += '</div>'
+		}
+
+		if (!hidePublished && published.length) {
+			o += '<div class="profileList">'
+			published.forEach(function (r) { o += renderEntryRow(r) })
+			o += '</div>'
+		}
+
+		if (!hidePublished && orphans.length) {
+			o += '<div class="profileSectionTitle">Published, no longer saved</div>'
+			o += '<div class="profileList">'
+			orphans.forEach(function (sub) {
+				o += '<div class="profileRow">'
+				o += '<span class="profileRowPhrase" onclick="profileUsePhrase(&quot;'+authEsc(sub.phrase).replace(/"/g,'&quot;')+'&quot;)">'+authEsc(sub.phrase)+'</span>'
 				o += '<span class="profileRowActions">'
-				if (published) {
-					o += '<span class="profileBadge profileBadgeOk">published</span>'
-				} else if (refused) {
-					o += '<span class="profileBadge profileBadgeBad" title="'+authEsc(refused)+'">blocked</span>'
-				} else {
-					// the cipher arrives prefilled from whatever is selected, so
-					// publishing stays one click unless you want to change it
-					o += profileCipherSelect(r.id)
-					o += '<button class="profileMiniBtn" onclick="profileSubmit(&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;,&quot;'+r.id+'&quot;)" title="Publish this phrase to the leaderboard">Submit</button>'
-				}
-				o += '<button class="profileMiniBtn profileMiniDanger" onclick="profileDeleteEntry(&quot;'+r.id+'&quot;,&quot;'+authEsc(r.phrase).replace(/"/g,'&quot;')+'&quot;)" title="Remove from your saved history">&#215;</button>'
+				o += '<span class="profileBadge profileBadgeOk">'
+				o += sub.cipher ? authEsc(sub.cipher) + (sub.value !== null && sub.value !== undefined ? ' ' + sub.value : '') : 'published'
 				o += '</span>'
-				if (refused) o += '<div class="profileRowWhy">'+authEsc(refused)+'</div>'
-				o += '</div>'
+				o += '<span class="profileWhen">'+new Date(sub.created_at).toLocaleDateString()+'</span>'
+				o += '<button class="profileMiniBtn profileMiniDanger" onclick="profileWithdraw(&quot;'+sub.id+'&quot;)">Withdraw</button>'
+				o += '</span></div>'
 			})
 			o += '</div>'
-			o += '<div class="profileNote profileFoot">Saving is private. A phrase is only visible to others once you press Submit.'
-			o += ' Phrases already in the database, or already published by someone else, cannot be submitted.</div>'
-			profileBody(o, tok)
-		})
+		}
+
+		o += '<div class="profileNote profileFoot profileRules">'
+		o += '<div class="profileRule">&#128274; Saving is private &mdash; everything here is yours alone.</div>'
+		o += '<div class="profileRule">&#128065; A phrase only becomes public when you press <b>Submit</b>.</div>'
+		o += '<div class="profileRule">&#128683; A phrase already in the database, or already published by someone else, cannot be submitted again.</div>'
+		o += '</div>'
+		profileBody(o, tok)
 	}).catch(function (err) { profileBody(profileErr(err), tok) })
 }
 
@@ -165,6 +320,76 @@ var profileSearchTimer = null
 function profileSearchDebounced() {
 	clearTimeout(profileSearchTimer)
 	profileSearchTimer = setTimeout(renderProfileEntries, 250)
+}
+
+// ---- live value preview -------------------------------------------------
+//
+// Whatever cipher the calculator itself currently has open (breakCipher),
+// falling back to the first enabled one if nothing is selected yet - never a
+// cipher chosen specially for this box, so the number always matches what the
+// calculator would show for the same phrase.
+function profilePreviewCipher() {
+	if (typeof cipherList === "undefined") return null
+	if (typeof breakCipher !== "undefined" && breakCipher) {
+		for (var i = 0; i < cipherList.length; i++) {
+			if (cipherList[i].cipherName === breakCipher) return cipherList[i]
+		}
+	}
+	for (var j = 0; j < cipherList.length; j++) {
+		if (cipherList[j].enabled) return cipherList[j]
+	}
+	return null
+}
+
+// gemForMatching() is the same function Find Matches and the database query
+// use, so this is never a second, slightly-different implementation of
+// gematria living only in this panel.
+function profilePreviewHtml(term) {
+	var phrase = term.trim()
+	if (phrase === "") return ""
+	var ciph = profilePreviewCipher()
+	if (ciph === null || typeof gemForMatching !== "function") return ""
+	var val = gemForMatching(ciph, phrase)
+	if (typeof val !== "number" || isNaN(val)) return authEsc(ciph.cipherName) + ": &mdash;"
+	return authEsc(ciph.cipherName) + ": <b>" + val + "</b>"
+}
+
+// Called on every keystroke in the search box, and again whenever the
+// calculator's own cipher selection changes (see updateWordBreakdown() in
+// breakdown.js) - a local computation, not a network round trip, so there is
+// nothing to debounce.
+function profilePreviewUpdate() {
+	var el = document.getElementById("profilePreview")
+	var box = document.getElementById("profileSearch")
+	if (el === null || box === null) return
+	el.innerHTML = profilePreviewHtml(box.value)
+}
+
+// ---- adding a phrase from the search box --------------------------------
+//
+// The Saved tab used to be read-only: a phrase only ever arrived here by
+// being typed into the calculator itself. This reuses the exact same
+// function that does - addPhraseToHistory() - so a phrase saved from here
+// behaves identically to one saved from the calculator, rather than a
+// second, parallel way of getting a phrase into the account.
+function profileAddFromSearch() {
+	var box = document.getElementById("profileSearch")
+	if (box === null) return
+	var phrase = box.value.trim()
+	if (phrase === "") return
+
+	var btn = document.getElementById("profileAddBtn")
+	if (btn !== null && btn.disabled) { // already saved verbatim - nothing to add
+		if (typeof displayCalcNotification === "function") displayCalcNotification("Already saved", 1600)
+		return
+	}
+	if (typeof addPhraseToHistory !== "function") return
+
+	addPhraseToHistory(phrase, true)
+	if (typeof histSyncFlush === "function") histSyncFlush()
+	box.value = ""
+	if (typeof displayCalcNotification === "function") displayCalcNotification("Saved: " + phrase, 2000)
+	renderProfileEntries()
 }
 
 // Loads a phrase into the input and stops there.
@@ -517,8 +742,8 @@ function renderProfilePresets() {
 		// preset saved for it. Nothing stored is touched - this only resets what
 		// is open.
 		o += '<div class="profileDefaultRow">'
-		o += '<button class="profileMiniBtn profileDefaultBtn" onclick="profilePresetDefaults(this)" title="Base-4 cyphers and the stock code rain">&#8634; Back to defaults</button>'
-		o += '<span class="profileWhen">&#9989; Base-4 and stock rain. Saved presets untouched.</span>'
+		o += '<button class="profileMiniBtn profileDefaultBtn" onclick="profilePresetDefaults(this)" title="CCRU cyphers and the stock code rain">&#8634; Back to defaults</button>'
+		o += '<span class="profileWhen">&#9989; CCRU and stock rain. Saved presets untouched.</span>'
 		o += '</div>'
 
 		o += '<div class="profileSearchRow profilePresetSaveRow">'
@@ -556,7 +781,7 @@ function profilePresetDefaults(btn) {
 	if (typeof enableDefaultCiphers === "function") enableDefaultCiphers()
 	if (typeof coderainResetIntensity === "function") coderainResetIntensity()
 	if (typeof coderainStyle !== "undefined") {
-		coderainStyle = "new"
+		coderainStyle = "matrix"
 		optMatrixCodeRain = true
 		if (typeof toggleCodeRain === "function") toggleCodeRain()
 	}
@@ -636,8 +861,10 @@ function renderProfileSubmissions() {
 }
 
 function profileWithdraw(id) {
-	submissionWithdraw(id).then(renderProfileSubmissions)
-		.catch(function (err) { profileBody(profileErr(err)) })
+	submissionWithdraw(id).then(function () {
+		displayCalcNotification("Withdrawn from the leaderboard", 1800)
+		renderProfileEntries()
+	}).catch(function (err) { profileBody(profileErr(err)) })
 }
 
 // ---- leaderboard ------------------------------------------------------
@@ -656,10 +883,14 @@ function renderProfileLeaderboard() {
 			var av = r.avatar
 				? '<img class="profileLbAvatar" src="'+authEsc(r.avatar)+'" alt="">'
 				: '<span class="profileLbAvatar profileLbFallback">'+authEsc(String(r.display_name).charAt(0).toUpperCase())+'</span>'
-			o += '<div class="profileRow profileLbRow" data-uid="'+r.user_id+'" onclick="profileShowContributor(&quot;'+r.user_id+'&quot;, &quot;'+authEsc(r.display_name).replace(/"/g,'&quot;')+'&quot;)">'
-			o += '<span class="profileLbRank">'+(i+1)+'</span>'
+			// top three get a metal. Only the first three, and only when they have
+			// actually published something - a podium in a list of one is a joke.
+			var podium = (i < 3 && rows.length > 1) ? ' frPodium' + (i + 1) : ''
+			var medal = ['&#129351;', '&#129352;', '&#129353;'][i] || ''
+			o += '<div class="profileRow profileLbRow'+podium+'" data-uid="'+r.user_id+'" onclick="profileShowContributor(&quot;'+r.user_id+'&quot;, &quot;'+authEsc(r.display_name).replace(/"/g,'&quot;')+'&quot;)">'
+			o += '<span class="profileLbRank">'+(podium ? medal : (i+1))+'</span>'
 			o += av
-			o += '<span class="profileRowPhrase">'+authEsc(r.display_name)+'</span>'
+			o += '<span class="profileRowPhrase">'+authEsc(r.display_name)+frAdminBadge(r.user_id)+'</span>'
 			o += '<span class="profileRowActions"><span class="profileBadge">'+r.submissions+'</span></span>'
 			o += '</div>'
 		})
@@ -672,6 +903,95 @@ function renderProfileLeaderboard() {
 
 // Whose submissions are showing, so the same name can close them again.
 var profileContribOpen = null
+
+// Kept outside the render so it survives a re-render, and so opening a second
+// contributor keeps the order you were reading in.
+var profileContribSort = "recent"
+
+// The list the select is built from. Adding an order is a row here plus a case
+// in profileSortContrib; nothing else changes.
+var profileContribSortOptions = [
+	["recent",   "\uD83C\uDD95 Most recent"],
+	["oldest",   "\uD83D\uDCDC Oldest first"],
+	["valueAsc", "\uD83D\uDD22 Value, low to high"],
+	["valueDesc","\uD83D\uDD22 Value, high to low"],
+	["az",       "\uD83D\uDD24 Alphabetical A\u2013Z"],
+	["za",       "\uD83D\uDD20 Alphabetical Z\u2013A"],
+	["cipher",   "\uD83C\uDFAF By cypher"],
+	["popular",  "\u2B50 Most used cypher"]
+]
+
+function profileSetContribSort(v) {
+	profileContribSort = v
+	if (profileContribOpen !== null) {
+		var id = profileContribOpen
+		profileContribOpen = null      // so this does not read as a close
+		profileShowContributor(id, profileContribName)
+	}
+}
+
+// A phrase published without a value - the cypher was removed, or it is a
+// wheel cypher with nothing to add up - has no place on a number line, so
+// those go last either way round rather than counting as zero or as huge.
+function profileContribValue(r) {
+	return (r.value === null || r.value === undefined) ? null : Number(r.value)
+}
+
+function profileSortContrib(rows) {
+	var out = rows.slice()
+	var byText = function (a, b) {
+		return String(a.phrase).localeCompare(String(b.phrase), undefined, { sensitivity: "base", numeric: true })
+	}
+	var byValue = function (dir) {
+		return function (a, b) {
+			var av = profileContribValue(a), bv = profileContribValue(b)
+			if (av === null && bv === null) return byText(a, b)
+			if (av === null) return 1      // valueless last whichever way round
+			if (bv === null) return -1
+			return av === bv ? byText(a, b) : (av - bv) * dir
+		}
+	}
+
+	switch (profileContribSort) {
+		case "oldest":    return out.sort(function (a, b) { return Date.parse(a.created_at) - Date.parse(b.created_at) })
+		case "valueAsc":  return out.sort(byValue(1))
+		case "valueDesc": return out.sort(byValue(-1))
+		case "az":        return out.sort(byText)
+		case "za":        return out.sort(function (a, b) { return byText(b, a) })
+		case "cipher":    return out.sort(function (a, b) {
+			var c = String(a.cipher || "").localeCompare(String(b.cipher || ""), undefined, { sensitivity: "base" })
+			return c !== 0 ? c : byValue(1)(a, b)
+		})
+		case "popular": {
+			// which cypher they publish in most, first - so the sort says
+			// something about them rather than about any one phrase
+			var freq = {}
+			out.forEach(function (r) { var k = r.cipher || ""; freq[k] = (freq[k] || 0) + 1 })
+			return out.sort(function (a, b) {
+				var d = (freq[b.cipher || ""] || 0) - (freq[a.cipher || ""] || 0)
+				if (d !== 0) return d
+				var c = String(a.cipher || "").localeCompare(String(b.cipher || ""))
+				return c !== 0 ? c : byValue(1)(a, b)
+			})
+		}
+		default: return out // already newest-first from the query
+	}
+}
+
+// The heading a chip sits under, or null when grouping would only add noise.
+function profileContribGroupOf(r) {
+	if (profileContribSort === "cipher" || profileContribSort === "popular") {
+		return r.cipher || "No cypher recorded"
+	}
+	if (profileContribSort === "valueAsc" || profileContribSort === "valueDesc") {
+		var v = profileContribValue(r)
+		return (v === null) ? "No value" : String(v)
+	}
+	return null
+}
+
+// remembered so the sort toggle can reopen the same person
+var profileContribName = ""
 
 // The colour the calculator already gives this cipher, so a leaderboard entry
 // and the column it came from read as the same thing.
@@ -706,6 +1026,7 @@ function profileShowContributor(userId, name) {
 	}
 
 	profileContribOpen = userId
+	profileContribName = name
 	profileMarkOpenContributor()
 	host.innerHTML = '<div class="profileLoading">Loading…</div>'
 	leaderboardPhrases(userId, 50).then(function (rows) {
@@ -714,8 +1035,30 @@ function profileShowContributor(userId, name) {
 		o += '<div class="profileContribTitle">Published by '+authEsc(name)+'</div>'
 		if (rows.length === 0) o += '<div class="profileNote">Nothing to show.</div>'
 		else {
-			o += '<div class="profileChips">'
+			// A select rather than a growing row of buttons: these are mutually
+			// exclusive orders, and there are now eight of them.
+			o += '<div class="profileContribSort">'
+			o += '<select class="frSelect" onchange="profileSetContribSort(this.value)">'
+			profileContribSortOptions.forEach(function (opt) {
+				o += '<option value="'+opt[0]+'"'+(profileContribSort === opt[0] ? ' selected' : '')+'>'+opt[1]+'</option>'
+			})
+			o += '</select>'
+			o += '<span class="profileWhen">'+rows.length+(rows.length === 1 ? ' phrase' : ' phrases')+'</span>'
+			o += '</div>'
+
+			rows = profileSortContrib(rows)
+			o += '<div class="profileChipScroll"><div class="profileChips">'
+			var lastGroup = null
 			rows.forEach(function (r) {
+				// A divider whenever the thing being sorted by changes, so a long
+				// list reads as groups rather than as one wall. Only where it
+				// means something: grouping an alphabetical list by value would
+				// put a heading between every pair of chips.
+				var g = profileContribGroupOf(r)
+				if (g !== null && g !== lastGroup) {
+					o += '<div class="profileChipGroup">'+authEsc(g)+'</div>'
+					lastGroup = g
+				}
 				var hasVal = (r.value !== null && r.value !== undefined)
 				var why = r.cipher
 					? (r.cipher + (hasVal ? ' = ' + r.value : '') + ' — send to the calculator')
@@ -735,7 +1078,7 @@ function profileShowContributor(userId, name) {
 				}
 				o += '</span>'
 			})
-			o += '</div>'
+			o += '</div></div>'
 		}
 		o += '</div>'
 		host.innerHTML = o

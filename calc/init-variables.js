@@ -282,6 +282,21 @@ function loadFile(filePath) {
 	return result;
   }
 
+// Same as loadFile(), but non-blocking. The synchronous XHR above freezes the
+// whole tab - no paint, no input, nothing - for as long as the request takes,
+// which for the multi-megabyte word database is the single biggest hit to
+// perceived load time. This fetches the same way but hands the text to a
+// callback once it arrives instead of stalling the main thread to return it.
+function loadFileAsync(filePath, callback) {
+	fetch(filePath).then(function (res) {
+		return res.ok ? res.text() : null
+	}).then(function (text) {
+		callback(text)
+	}).catch(function () {
+		callback(null)
+	})
+}
+
 $(document).ready(function(){
 
 	$("body").on("click", "#btn-print-cipher-png", function () { // for future elements
@@ -405,9 +420,16 @@ var ctrlIsPressed = false; // allow Ctrl modifier key
 var shiftIsPressed = false; // allow Shift modifier key
 
 // used inside highlighter.js
-var avail_match = []; // all matches found with auto highligher
+var avail_match = []; // all matches found with auto highligher, flattened across every enabled cipher (Highlight box display only - see avail_match_by_col)
 var avail_match_freq = []; // frequency of matches found with auto highligher
 var freq = []; // frequency of matches found with auto highlighter (combined)
+// Same Cipher Match only: avail_match_by_col[cipher column index] = {value: true, ...}
+// for values that genuinely repeat within that column. avail_match above
+// loses which cipher a match came from once flattened, which let a value
+// with a real match in one cipher "match" an unrelated lone occurrence of
+// the same number in a different cipher - this is what buildHistMatchOrder()
+// and the Same Cipher Match highlighting actually key off instead.
+var avail_match_by_col = [];
 
 var prevPhrID = -1 // index of previously selected phrase in history table
 var prevCiphIndex = -1 // index of previously selected cipher in enabled ciphers table
@@ -491,9 +513,12 @@ $(document).ready(function(){
 		}
 	});
 	
-	// breakdown or cipher table letter/number clicked
-	$("body").on("click", ".ChartVal, .BreakChar, .BreakVal, .BreakValDark, .BreakWordSum", function () {
-		$(this).toggleClass('highlightCipherTable'); 
+	// cipher chart letter/number clicked (the Word Breakdown's own letters,
+	// values and word sums are handled directly by breakdownBoxClick() -
+	// breakdown.js - since #BreakTableContainer has its own onclick that
+	// rebuilds the box, which would otherwise race this delegated handler)
+	$("body").on("click", ".ChartVal", function () {
+		$(this).toggleClass('highlightCipherTable');
 	});
 	// cipher chart letter click (keyboard)
 	$("body").on("click", ".ChartChar", function () { // letters
@@ -526,7 +551,11 @@ $(document).ready(function(){
 
 	// history table value clicked (right mouse button)
 	// disable context menu for the element so right click works
-	$(".tC").live('contextmenu', function() { // ".bind" for existing elements, ".live" for future
+	// Delegated from document, which is what .live() did internally before it
+	// was removed in jQuery 1.9. The rows of the history table are rebuilt on
+	// every calculation, so the handler has to survive elements that do not
+	// exist yet — that is the whole reason .live() was used here.
+	$(document).on('contextmenu', '.tC', function() {
 		$(this).find(".gV").toggleClass('hideValue'); // <b> "style="display: none;"
 		return false; // don't show menu
 	})
@@ -542,7 +571,8 @@ $(document).ready(function(){
 			$( "table.HistoryTable td.tC > span:contains('"+val+"')" ).toggleClass('highlightValueBlink'); // add blinking effect
 		}
 	});
-	
+
+
 	// Right click on cipher name in enabled cipher table
 	$("body").on("contextmenu", ".phraseGemCiphName", function (e) { // tC - history table cell
 		var val = $(this).text(); // get cipher name from element

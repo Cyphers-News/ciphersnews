@@ -396,6 +396,28 @@
 }
 .profileSearchInput:focus { border-color: var(--focus-outline); }
 .profileCount { font-size: 80%; color: var(--font-white-4); min-width: 3em; text-align: right; }
+/* Enabled only once the box holds a phrase not already saved verbatim - see
+   profileAddFromSearch() - so it never reads as a second search button. */
+.profileAddBtn { flex: 0 0 auto; white-space: nowrap; }
+/* Live gematria preview under the search/add box - see profilePreviewUpdate().
+   Reserves its line even when empty so the row above it does not jump. */
+.profilePreview {
+	min-height: 1.3em;
+	padding: 0 0.1em 0.6em 0.1em;
+	font-size: 85%;
+	color: var(--font-white-3);
+}
+.profilePreview b { color: var(--font-white-1); }
+/* Collapsed by default - see profileHidePublishedGet(). One line, not a
+   button, so it reads as part of the list rather than another control. */
+.profilePublishedToggle {
+	font-size: 82%;
+	color: var(--font-white-3);
+	cursor: pointer;
+	padding: 0.5em 0.2em;
+	user-select: none;
+}
+.profilePublishedToggle:hover { color: var(--font-white-1); }
 
 .profileList {
 	max-height: 340px;
@@ -948,14 +970,46 @@
    phrase and a leaderboard entry are visibly the same kind of thing. Only
    what is genuinely new to this tab is defined here. */
 
-.frTabs { display: flex; gap: 0.3em; flex-wrap: wrap; padding-bottom: 0.6em; }
-.intBtn3.frTab { width: auto; margin: 0; padding: 0.25em 0.8em; position: relative; }
+/* Icon beside the word, not above it, and at text size rather than a size
+   that makes the row read as a toolbar of pictures. The icons are given a
+   fixed width so they line up down the column whatever glyph is in them -
+   emoji have wildly different advance widths, and without this the labels
+   stagger. */
+.frTabs { display: flex; gap: 0.25em; padding-bottom: 0.7em; flex-wrap: wrap; }
+.intBtn3.frTab {
+	width: auto;
+	flex: 1 1 auto;
+	min-width: 0;
+	margin: 0;
+	padding: 0.3em 0.55em;
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35em;
+	line-height: 1.3em;
+	transition: color 0.15s ease, background-color 0.15s ease;
+}
+.frTabIcon {
+	font-size: 95%;
+	line-height: 1;
+	width: 1.15em;
+	text-align: center;
+	flex: 0 0 auto;
+}
+.frTabLab { font-size: 84%; overflow: hidden; text-overflow: ellipsis; }
 .intBtn3.frTab.frTabOn { background-color: var(--btn-active-accent); color: var(--font-white-1); font-weight: 600; }
+/* the site's green, the same one the back button and Find Matches use */
+.intBtn3.frTab:hover { color: hsl(140 60% 66%); border-color: hsl(140 45% 45%); }
+@media (prefers-reduced-motion: reduce) { .intBtn3.frTab { transition: none; } }
+@media (max-width: 420px) { .frTabLab { display: none; } .frTabIcon { font-size: 110%; width: auto; } }
 
 /* the count of requests waiting, on the section button and inline in headings */
 .frBadge {
 	display: inline-block;
 	margin-left: 0.4em;
+	position: relative;
 	min-width: 1.35em;
 	padding: 0 0.3em;
 	border-radius: 999px;
@@ -1003,7 +1057,8 @@
 .frWho { flex: 1 1 auto; min-width: 0; cursor: pointer; }
 .frWho:hover .frName { color: var(--font-white-1); text-decoration: underline; }
 .frName { display: block; color: var(--font-white-2); font-weight: 600; }
-.frSub { display: block; font-size: 80%; color: var(--font-white-4); }
+/* the handle and the join date are read on purpose, not skipped */
+.frSub { display: block; font-size: 80%; color: var(--font-white-3); }
 
 /* Presence is a timestamp, not a flag, so this is "seen in the last five
    minutes" rather than a state a closed browser could leave stuck on. */
@@ -1110,6 +1165,11 @@
 	border-color: hsl(210 30% 38%);
 	color: hsl(210 20% 94%);
 }
+/* An edge on the outer side, so which way a message faces survives a bubble
+   wide enough that its position no longer says. Colour alone is not enough on
+   a phone held at arm's length. */
+.frMsgRow .frBubble { border-left: 3px solid var(--font-white-4); }
+.frMsgMine .frBubble { border-left: 1px solid hsl(210 30% 38%); border-right: 3px solid hsl(210 55% 62%); }
 .frMsgWhen { font-size: 72%; color: var(--font-white-4); padding: 0.1em 0.2em; }
 
 .frChatCompose { display: flex; gap: 0.4em; align-items: flex-end; padding-top: 0.5em; }
@@ -1132,3 +1192,419 @@
 
 .frChatWarn { font-size: 80%; color: var(--font-white-4); min-height: 1.2em; padding-top: 0.25em; }
 .frChatWarn.frChatWarnBad { color: hsl(5 75% 72%); }
+
+/* Mobile: index.html pins the layout viewport to 520px, so this matches on a
+   phone and never on a desktop window.
+   
+   78% of a 465px log leaves 81px of offset - 17% - and at that width a normal
+   sentence fills the bubble and both sides read as centred, which is exactly
+   what they did. 64% doubles the offset to a third of the width, which is
+   unmistakable at a glance. Long messages wrap a line more; being able to tell
+   who said what is worth more than that. */
+@media (max-width: 620px) {
+	.frBubble { max-width: 64%; }
+	.frChatLog { height: 300px; }
+}
+
+/* the flag on a chat message: quiet until hovered, loud once armed */
+.frMsgFlag {
+	cursor: pointer;
+	padding-left: 0.35em;
+	color: var(--font-white-4);
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+.frMsgRow:hover .frMsgFlag { opacity: 1; }
+.frMsgFlag:hover { color: hsl(5 75% 70%); }
+.frMsgFlag.frMsgFlagArmed { opacity: 1; color: hsl(5 80% 72%); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .frMsgFlag { transition: none; } }
+/* touch devices have no hover, so the flag has to be permanently visible */
+@media (hover: none) { .frMsgFlag { opacity: 0.55; } }
+
+/* admin shortcut in the nav row */
+.authNavLink.authNavAdmin { color: hsl(45 85% 72%); }
+
+/* the sort toggle above a contributor's published phrases */
+.profileContribSort { display: flex; align-items: center; gap: 0.5em; padding-bottom: 0.5em; }
+.profileSectionTitle {
+	font-size: 84%;
+	font-weight: 600;
+	color: var(--font-white-3);
+	padding: 0.9em 0 0.4em 0;
+	border-top: 1px solid var(--separator-accent2);
+	margin-top: 0.6em;
+}
+
+
+/* ---- friends nav: badges and the first-time pip ---- */
+
+.frTab .frBadge {
+	position: absolute;
+	top: 1px;
+	right: 2px;
+	margin: 0;
+	font-size: 68%;
+	line-height: 1.4em;
+	min-width: 1.4em;
+}
+/* Not a count - a nudge. Shown until the section has been opened once, then
+   never again, so it cannot become part of the furniture. */
+.frPip {
+	position: absolute;
+	top: 1px;
+	right: 3px;
+	color: hsl(45 90% 68%);
+	font-size: 78%;
+	animation: frPipGlow 2.4s ease-in-out infinite;
+}
+@keyframes frPipGlow { 0%,100% { opacity: 0.45 } 50% { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .frPip { animation: none; opacity: 0.9 } }
+
+/* ---- one select instead of a row of chips ---- */
+
+.frSelect {
+	font-family: var(--font-family), "Arial", sans-serif;
+	font-size: 82%;
+	color: var(--font-white-1);
+	background-color: var(--input-bg-accent);
+	border: 1px solid var(--border-accent);
+	padding: 0.2em 0.4em;
+	outline: none;
+	max-width: 14em;
+}
+.frSelect:focus { border-color: var(--focus-outline); }
+.frToolCount { font-size: 80%; color: var(--font-white-3); margin-left: auto; }
+
+/* ---- privacy ---- */
+
+.frPrivHead {
+	font-size: 100%;
+	font-weight: 600;
+	color: var(--font-white-1);
+	padding: 1em 0 0.5em 0;
+}
+.frPrivHead:first-child { padding-top: 0.2em; }
+.frPrivFoot {
+	font-size: 80%;
+	color: var(--font-white-3);
+	border-top: 1px solid var(--separator-accent2);
+	margin-top: 1em;
+	padding-top: 0.7em;
+	line-height: 1.45em;
+}
+
+/* one question, three answers - a choice, not a filter */
+.frChoice { display: flex; flex-direction: column; gap: 0.35em; }
+.frChoiceCard {
+	display: flex;
+	align-items: center;
+	gap: 0.7em;
+	width: 100%;
+	box-sizing: border-box;
+	text-align: left;
+	font-family: var(--font-family), "Arial", sans-serif;
+	background-color: var(--input-bg-accent);
+	border: 1px solid var(--border-accent);
+	color: var(--font-white-2);
+	padding: 0.6em 0.8em;
+	cursor: pointer;
+	outline: none;
+}
+.frChoiceCard:hover { background-color: var(--btn-hover-accent); }
+.frChoiceCard.frChoiceOn {
+	border-color: hsl(140 50% 48%);
+	background-color: hsla(140 45% 35% / 0.22);
+	color: var(--font-white-1);
+}
+.frChoiceIcon { font-size: 145%; flex: 0 0 auto; line-height: 1; }
+.frChoiceBody { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.frChoiceTitle { font-weight: 600; font-size: 95%; }
+.frChoiceBlurb { font-size: 80%; color: var(--font-white-3); line-height: 1.35em; }
+.frChoiceTick { color: hsl(140 60% 62%); font-weight: 700; font-size: 115%; flex: 0 0 1em; }
+
+/* switches: whole row is the target, green on, grey off */
+.frSwitchRow {
+	display: flex;
+	align-items: center;
+	gap: 0.7em;
+	padding: 0.55em 0.7em;
+	margin-bottom: 0.3em;
+	background-color: var(--input-bg-accent);
+	border: 1px solid var(--border-dark-accent);
+	cursor: pointer;
+}
+.frSwitchRow:hover { background-color: var(--btn-hover-accent); }
+.frSwitchIcon { font-size: 125%; flex: 0 0 auto; line-height: 1; }
+.frSwitchBody { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.frSwitchTitle { font-size: 92%; color: var(--font-white-2); font-weight: 600; }
+.frSwitchRow.frSwitchOn .frSwitchTitle { color: var(--font-white-1); }
+.frSwitchBlurb { font-size: 78%; color: var(--font-white-3); line-height: 1.35em; }
+
+.frSwitch {
+	flex: 0 0 auto;
+	width: 38px;
+	height: 21px;
+	border-radius: 999px;
+	background-color: var(--btn-bg-accent);
+	border: 1px solid var(--border-accent);
+	position: relative;
+	transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+.frSwitchKnob {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	background-color: var(--font-white-3);
+	transition: transform 0.16s ease, background-color 0.16s ease;
+}
+.frSwitchRow.frSwitchOn .frSwitch {
+	background-color: hsl(140 48% 36%);
+	border-color: hsl(140 45% 50%);
+}
+.frSwitchRow.frSwitchOn .frSwitchKnob { transform: translateX(17px); background-color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+	.frSwitch, .frSwitchKnob { transition: none; }
+}
+
+/* ---- profile: roles and favourite cyphers ---- */
+
+.frPreview {
+	border: 1px dashed var(--border-accent);
+	padding: 0.7em;
+	margin-bottom: 0.3em;
+}
+.frRoleGrid { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.frRole {
+	font-family: var(--font-family), "Arial", sans-serif;
+	font-size: 82%;
+	color: var(--font-white-2);
+	background-color: var(--btn-bg-accent);
+	border: 1px solid var(--border-accent);
+	padding: 0.25em 0.6em;
+	cursor: pointer;
+	outline: none;
+}
+.frRole:hover { background-color: var(--btn-hover-accent); }
+.frRole.frRoleOn {
+	background-color: hsla(140 45% 35% / 0.3);
+	border-color: hsl(140 45% 48%);
+	color: var(--font-white-1);
+	font-weight: 600;
+}
+.frRoleShow { display: flex; flex-wrap: wrap; gap: 0.3em; padding-bottom: 0.6em; }
+.frRoleTag {
+	font-size: 80%;
+	color: var(--font-white-2);
+	background-color: var(--btn-bg-accent);
+	border: 1px solid var(--border-accent);
+	padding: 0.15em 0.55em;
+}
+
+.frFavRow, .frFavShow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35em; padding-bottom: 0.6em; }
+.frFavLab { font-size: 80%; color: var(--font-white-3); font-weight: 600; }
+.frFav {
+	font-size: 82%;
+	font-weight: 600;
+	color: var(--font-white-2);
+	border: 1px solid var(--border-accent);
+	padding: 0.15em 0.55em;
+	white-space: nowrap;
+}
+.frFavX { cursor: pointer; padding-left: 0.4em; opacity: 0.7; }
+.frFavX:hover { opacity: 1; }
+
+/* ---- leaderboard: a scroll box, and groups inside it ---- */
+
+.profileChipScroll {
+	max-height: 300px;
+	overflow-y: auto;
+	padding-right: 0.2em;
+	/* a thin scrollbar rather than the platform's, so a long list does not
+	   suddenly grow a wide grey bar down the side of the panel */
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-accent) transparent;
+}
+.profileChipScroll::-webkit-scrollbar { width: 8px; }
+.profileChipScroll::-webkit-scrollbar-track { background: transparent; }
+.profileChipScroll::-webkit-scrollbar-thumb {
+	background-color: var(--border-accent);
+	border-radius: 999px;
+}
+.profileChipScroll::-webkit-scrollbar-thumb:hover { background-color: var(--font-white-4); }
+
+/* the value or cypher a run of chips belongs to */
+.profileChipGroup {
+	flex: 1 0 100%;
+	font-size: 78%;
+	font-weight: 700;
+	color: var(--font-white-3);
+	letter-spacing: 0.04em;
+	padding: 0.6em 0 0.25em 0;
+	border-top: 1px solid var(--separator-accent2);
+	margin-top: 0.3em;
+}
+.profileChipGroup:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.profileContribSort { display: flex; align-items: center; gap: 0.5em; padding-bottom: 0.5em; flex-wrap: wrap; }
+
+/* ---- leaderboard podium ----
+   The top three get a metal. Kept to a left edge, a faint wash and a coloured
+   rank rather than a glow around the whole row: a leaderboard is a list you
+   scan, and three rows lit up like buttons would fight the names for
+   attention. */
+.profileRow.profileLbRow.frPodium1,
+.profileRow.profileLbRow.frPodium2,
+.profileRow.profileLbRow.frPodium3 { border-left-width: 3px; border-left-style: solid; }
+
+.profileLbRow.frPodium1 {
+	border-left-color: hsl(45 85% 55%);
+	background: linear-gradient(90deg, hsla(45 80% 50% / 0.16), transparent 45%);
+}
+.profileLbRow.frPodium2 {
+	border-left-color: hsl(210 12% 72%);
+	background: linear-gradient(90deg, hsla(210 10% 70% / 0.14), transparent 45%);
+}
+.profileLbRow.frPodium3 {
+	border-left-color: hsl(25 55% 50%);
+	background: linear-gradient(90deg, hsla(25 55% 45% / 0.14), transparent 45%);
+}
+.profileLbRow.frPodium1 .profileLbRank,
+.profileLbRow.frPodium2 .profileLbRank,
+.profileLbRow.frPodium3 .profileLbRank { font-size: 105%; }
+.profileLbRow.frPodium1 .profileRowPhrase { color: hsl(45 75% 78%); font-weight: 600; }
+.profileLbRow.frPodium2 .profileRowPhrase { color: hsl(210 15% 88%); font-weight: 600; }
+.profileLbRow.frPodium3 .profileRowPhrase { color: hsl(25 60% 74%); font-weight: 600; }
+
+/* ---- a conversation with something in it ----
+   A soft breathing edge rather than a hard highlight: it has to be noticeable
+   in a list without being the brightest thing in the panel. Stops the moment
+   the thread is opened, because at that point it is no longer news. */
+.profileRow.frRow.frThreadUnread {
+	border-left: 3px solid hsl(140 55% 48%);
+	animation: frThreadGlow 2.6s ease-in-out infinite;
+}
+@keyframes frThreadGlow {
+	0%, 100% { background-color: transparent; }
+	50%      { background-color: hsla(140 50% 40% / 0.16); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.profileRow.frRow.frThreadUnread { animation: none; background-color: hsla(140 50% 40% / 0.14); }
+}
+
+.frThreadWho { flex: 0 0 auto; cursor: pointer; display: flex; align-items: center; }
+.frThreadName { cursor: pointer; }
+.frThreadName:hover { color: hsl(140 60% 66%); text-decoration: underline; }
+.frChatRules { padding-top: 0.5em; }
+.frChatRule {
+	font-size: 79%;
+	color: var(--font-white-3);
+	line-height: 1.45em;
+	padding: 0.12em 0;
+}
+
+.profileRules { padding-top: 0.6em; }
+.profileRule { font-size: 80%; color: var(--font-white-3); line-height: 1.45em; padding: 0.1em 0; }
+.profileRule b { color: var(--font-white-2); }
+
+/* ---- membership nav ----
+   The tabs run in three groups: what you work with, who you work with, and the
+   account. The separator is a gap, not a heading — an earlier version used
+   inline "WORKSPACE" / "COMMUNITY" / "ACCOUNT" labels, which sat at tab size,
+   looked clickable, were not, and did not survive the row wrapping. Whitespace
+   has none of those problems. */
+.profileTab.profileTabRun { margin-left: 1.1em; }
+@media (max-width: 560px) {
+	/* a phone wraps this row several times, so a horizontal gap says nothing —
+	   the runs land on their own lines anyway */
+	.profileTab.profileTabRun { margin-left: 0; }
+}
+
+
+/* ---- report dialog ---- */
+.frReportBack {
+	position: fixed; inset: 0; z-index: 400;
+	background: hsla(0 0% 0% / 0.55);
+}
+.frReportBox {
+	position: fixed; z-index: 401;
+	left: 50%; top: 50%; transform: translate(-50%, -50%);
+	width: min(23em, 92vw);
+	box-sizing: border-box;
+	background-color: var(--menu-bg-accent);
+	border: 1px solid var(--border-accent);
+	padding: 1em 1.1em 1.1em 1.1em;
+	max-height: 88vh; overflow-y: auto;
+}
+.frReportSel { width: 100%; max-width: 100%; }
+.frReportBtns { display: flex; gap: 0.4em; justify-content: flex-end; padding-top: 0.7em; }
+.profileMiniBtn.frThreadBtn { padding: 0.1em 0.45em; }
+
+/* ---- first-run onboarding ----
+   Sits over the welcome page rather than beside it: one question at a time,
+   and nothing else on screen competing for the answer. */
+.obBack {
+	position: fixed; inset: 0; z-index: 500;
+	background: hsla(0 0% 0% / 0.72);
+}
+.obBox {
+	position: fixed; z-index: 501;
+	left: 50%; top: 50%; transform: translate(-50%, -50%);
+	width: min(27em, 94vw);
+	max-height: 92vh;
+	box-sizing: border-box;
+	display: flex; flex-direction: column;
+	background-color: var(--menu-bg-accent);
+	border: 1px solid var(--border-accent);
+	padding: 1.2em 1.3em 1.1em 1.3em;
+}
+
+.obDots { display: flex; gap: 0.35em; justify-content: center; padding-bottom: 1.1em; flex: 0 0 auto; }
+.obDot {
+	width: 1.6em; height: 3px;
+	background-color: var(--separator-accent2);
+	transition: background-color 0.2s ease;
+}
+.obDotDone { background-color: hsl(140 45% 42%); }
+.obDotOn   { background-color: hsl(140 60% 60%); }
+@media (prefers-reduced-motion: reduce) { .obDot { transition: none; } }
+
+.obBody { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+
+.obIcon  { font-size: 210%; text-align: center; line-height: 1.1em; padding-bottom: 0.2em; }
+.obTitle {
+	font-size: 130%; font-weight: 600; text-align: center;
+	color: var(--font-white-1);
+	padding-bottom: 0.4em;
+}
+.obLead {
+	font-size: 88%; text-align: center; line-height: 1.5em;
+	color: var(--font-white-3);
+	padding-bottom: 1em;
+}
+.obNote {
+	font-size: 80%; text-align: center; line-height: 1.5em;
+	color: var(--font-white-4);
+	padding-top: 0.9em;
+}
+.obField { padding-bottom: 0.2em; }
+
+.obList { display: flex; flex-direction: column; gap: 0.7em; }
+.obPoint { display: flex; align-items: flex-start; gap: 0.6em; }
+.obPointIcon  { font-size: 125%; flex: 0 0 auto; line-height: 1.2em; }
+.obPointBody  { display: flex; flex-direction: column; min-width: 0; }
+.obPointTitle { font-size: 90%; font-weight: 600; color: var(--font-white-2); }
+.obPointBlurb { font-size: 80%; line-height: 1.45em; color: var(--font-white-3); }
+
+.obNav {
+	flex: 0 0 auto;
+	display: flex; gap: 0.4em; align-items: center;
+	padding-top: 1.1em;
+}
+.obNav .authBtn { margin: 0; flex: 0 0 auto; width: auto; padding-left: 1em; padding-right: 1em; }
+/* Skip sits between Back and Next, quiet but the same size to hit */
+.obBtnSkip { margin-left: auto !important; color: var(--font-white-4); }
+.obNav .authBtnPrimary { flex: 0 0 auto; }
+.obBtnWide { flex: 1 1 auto !important; width: 100% !important; }
+

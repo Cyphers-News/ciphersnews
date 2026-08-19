@@ -8,7 +8,7 @@
 
 Decode your reality.  Discover hidden synchronicities and encode your own!
 
-Try it live at https://cyphers.news/
+Try it live at https://ciphers.news/
 
 The Cyphers, Gematro, Hyperdope Gematria project values these principles:
 

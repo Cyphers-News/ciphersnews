@@ -12,7 +12,7 @@ function gemCalcModeLabel(curCipher) {
 
 function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = true) { // false - preview temporary (hover), true - lock breakdown to a specific cipher
 	var x, curCipher, curCiphCol, cSpot
-	var o, oo, acw, acl
+	var o, acw, acl
 
 	updateEnabledCipherCount()
 	$("#BreakTableContainer").removeClass("hideValue") // unhide breakdown
@@ -20,11 +20,17 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 
 	if (impBool == true) {
 		breakCipher = impName // lock to a specific cipher
-		// Choosing a cypher puts the rain back on that cypher's colour, even if
-		// a colour was picked by hand earlier. Picking a colour is a decision
-		// about right now; picking a cypher is a decision about what you are
-		// looking at, and the rain follows what you are looking at.
-		if (typeof coderainFollowSelectedCipher === "function") coderainFollowSelectedCipher()
+		// Deliberately does not touch the rain colour here any more. This runs
+		// for every automatic re-selection too (e.g. updateTables() falling back
+		// to "the first enabled cipher" after a toggle, or on initial load), not
+		// just a deliberate click - so turning "follow cipher" on from here made
+		// the rain colour drift on its own before the user had picked anything.
+		// Follow-cipher is now only ever turned on from its own checkbox.
+
+		// The Saved tab's live preview reads whichever cipher this just locked
+		// in, so a cipher change made anywhere else keeps that number honest
+		// without needing the Saved tab to be re-opened.
+		if (typeof profilePreviewUpdate === "function") profilePreviewUpdate()
 	}
 		
 	if (!optShowCipherChart) $("#ChartSpot").attr("style", "border: none;"); // reset gradient for cipher chart
@@ -45,6 +51,32 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 	curCipher = cipherList[cSpot]
 	curCiphCol = (optColoredCiphers) ? 'color: hsl('+curCipher.H+' '+curCipher.S+'% '+curCipher.L+'% / 1)' : ''
 	curGradCol = (optColoredCiphers) ? 'hsl('+curCipher.H+' '+curCipher.S+'% '+curCipher.L+'% / 0.2)' : 'hsl(0 0% 0% / 0.1)'
+
+	// The classic look - gradient background, cypher name shown, no faint
+	// blocks behind the letters/values - is the default; clicking the box
+	// (toggleBreakdownTint(), bottom of file) switches to the plainer one
+	// instead. Computed once here since both exit points below (the short-
+	// phrase grid and the long-phrase one) need it.
+	var tintClass = breakdownTintOn ? ' breakdownTinted' : ''
+	var tintStyle = ''
+	if (breakdownTintOn && optGradientCharts) {
+		tintStyle = ' style="background: '+bgCol+' -webkit-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));' +
+			'background: '+bgCol+' -o-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));' +
+			'background: '+bgCol+' -moz-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));' +
+			'background: '+bgCol+' linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));"'
+	}
+	var cipherNameFooter = breakdownTintOn ? '<div class="BreakCipherName" style="'+curCiphCol+'">' + curCipher.cipherName + gemCalcModeLabel(curCipher) + '</div>' : ''
+
+	// tinted look drops the "=" entirely and reads as a standalone result
+	var eqSign = breakdownTintOn ? '' : '<span class="BreakEqualsSign">=</span> '
+	// short phrases take the cypher colour on the total too (set inline, same
+	// as the letters) - long phrases keep it white, see .breakSumDark in css
+	var sumColStyle = breakdownTintOn ? ' style="'+curCiphCol+'"' : ''
+	// word sums run opposite the letters, so the two never carry the same
+	// colour: long phrases have white letters, so their word sums take the
+	// cypher colour instead (short phrases already have cypher-coloured
+	// letters, so their word sums stay plain white - .BreakWordSum's default)
+	var longWordSumStyle = breakdownTintOn ? ' style="'+curCiphCol+'"' : ''
 
 	var leftToRightBreak = true
  	// if Hebrew Aleph is assigned in current cipher
@@ -100,7 +132,7 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 		if (optWordBreakdown == true && !curCipher.wheelCipher && curCipher.cp.length <= chLimit ) { // character limit, calculated even if out of screen bounds
 			var tdCount = 0; var wCount = 0;
 
-			o += '</div><div id="BreakTableContainer" class="'+RTLclass+'"><table class="BreakTable">'
+			o += '</div><div id="BreakTableContainer" class="'+RTLclass+tintClass+' BreakShort"'+tintStyle+' onclick="breakdownBoxClick(event)"><table class="BreakTable">'
 			o += '<tbody><tr>'
 
 			if (leftToRightBreak) { // left to right
@@ -117,7 +149,7 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 					}
 					tdCount++
 				}
-				o += '<td class="BreakPhraseSum" rowspan="2"><font style="'+curCiphCol+'">' + curCipher.sumArr.reduce(getSum) + '</font></td>'
+				o += '<td class="BreakPhraseSum" rowspan="2"'+sumColStyle+'>' + eqSign + curCipher.sumArr.reduce(getSum) + '</td>'
 				o += '</tr><tr>'
 				tdCount++
 				for (z = 0; z < x; z++) {
@@ -126,7 +158,7 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 					}
 				}
 			} else { // right to left (Hebrew, Arabic)
-				o += '<td class="BreakPhraseSum" rowspan="2"><font style="'+curCiphCol+'">' + curCipher.sumArr.reduce(getSum) + '</font></td>'
+				o += '<td class="BreakPhraseSum" rowspan="2"'+sumColStyle+'>' + eqSign + curCipher.sumArr.reduce(getSum) + '</td>'
 				var curBreakWord = '' // current word, added to main 'o' string
 				for (x = 0; x < curCipher.cp.length; x++) {
 					if (curCipher.cp[x] !== " ") {
@@ -152,9 +184,7 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 					}
 				}
 			}
-			ciphEndClass = (leftToRightBreak) ? "CipherEnd" : "CipherEndRTL"
-			if (optCompactBreakdown == true) o += '</tr><tr><td colspan=' + tdCount + ' class="'+ciphEndClass+'"><font style="'+curCiphCol+'">' + curCipher.cipherName + gemCalcModeLabel(curCipher) + '</font></td></tr></table></div>'
-			else o += '</tr></tbody></table></div>'
+			o += '</tr></tbody></table>' + cipherNameFooter + '</div>'
 
 			o = oStart + o // prepend phrase, word/letter count
 
@@ -169,12 +199,12 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 				for (x = 0; x < curCipher.cp.length; x++) {
 					if (curCipher.cp[x] !== " ") {
 						if (String(curCipher.cp[x]).substring(0, 3) == "num") {
-							curBreakRow += '<td class="BreakChar">' + curCipher.cp[x].substring(3, curCipher.cp[x].length) + '</td>'
+							curBreakRow += '<td class="BreakChar" style="'+curCiphCol+'">' + curCipher.cp[x].substring(3, curCipher.cp[x].length) + '</td>'
 						} else {
-							curBreakRow += '<td class="BreakChar">' + String.fromCharCode(curCipher.cp[x]) + '</td>'
+							curBreakRow += '<td class="BreakChar" style="'+curCiphCol+'">' + String.fromCharCode(curCipher.cp[x]) + '</td>'
 						}
 					} else { // show character values and word sum if space
-						curBreakRow += '<td class="BreakWordSum" rowspan="2"><font style="'+curCiphCol+'">' + curCipher.sumArr[wrdCount] + '</font></td>'
+						curBreakRow += '<td class="BreakWordSum" rowspan="2"'+longWordSumStyle+'>' + curCipher.sumArr[wrdCount] + '</td>'
 						if (breakArr.indexOf(wrdCount) > -1 || wrdCount == curCipher.WordCount-1) { // include values for last word
 							curBreakRow += '</tr><tr>'
 							for (z; z < x; z++) {
@@ -197,16 +227,16 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 					}
 					curBreakRow += '</tr></tbody></table>'
 				}
-				o = '</div><div id="BreakTableContainer" class="'+RTLclass+'">' + curBreakRow
+				o = '</div><div id="BreakTableContainer" class="'+RTLclass+tintClass+' BreakLong"'+tintStyle+' onclick="breakdownBoxClick(event)">' + curBreakRow
 			} else { // right to left (Hebrew, Arabic)
 				curBreakRow = '<table class="BreakTableRow"><tbody><tr>'
-				if (curCipher.WordCount > 1) curBreakRow += '<td class="BreakWordSum" rowspan="2"><font style="'+curCiphCol+'">' + curCipher.sumArr[wrdCount] + '</font></td>'
+				if (curCipher.WordCount > 1) curBreakRow += '<td class="BreakWordSum" rowspan="2"'+longWordSumStyle+'>' + curCipher.sumArr[wrdCount] + '</td>'
 				for (x = 0; x < curCipher.cp.length; x++) {
 					if (curCipher.cp[x] !== " ") {
 						if (String(curCipher.cp[x]).substring(0, 3) == "num") {
-							curBreakRow += '<td class="BreakChar">' + curCipher.cp[x].substring(3, curCipher.cp[x].length) + '</td>'
+							curBreakRow += '<td class="BreakChar" style="'+curCiphCol+'">' + curCipher.cp[x].substring(3, curCipher.cp[x].length) + '</td>'
 						} else {
-							curBreakRow += '<td class="BreakChar">' + String.fromCharCode(curCipher.cp[x]) + '</td>'
+							curBreakRow += '<td class="BreakChar" style="'+curCiphCol+'">' + String.fromCharCode(curCipher.cp[x]) + '</td>'
 						}
 					} else { // show character values and word sum if space or last character
 						if (breakArr.indexOf(wrdCount) > -1 || wrdCount == curCipher.WordCount-1) { // include values for last word
@@ -221,7 +251,7 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 							if (wrdCount !== curCipher.WordCount-1) curBreakRow = '<table class="BreakTableRow"><tbody><tr>'
 						}
 						wrdCount++
-						if (wrdCount !== curCipher.WordCount) curBreakRow += '<td class="BreakWordSum" rowspan="2"><font style="'+curCiphCol+'">' + curCipher.sumArr[wrdCount] + '</font></td>'
+						if (wrdCount !== curCipher.WordCount) curBreakRow += '<td class="BreakWordSum" rowspan="2"'+longWordSumStyle+'>' + curCipher.sumArr[wrdCount] + '</td>'
 					}
 				}
 				if (curCipher.cp.indexOf(" ") == -1) { // show character values if one long word (has no " ")
@@ -234,12 +264,23 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 					curBreakRow += '</tr></tbody></table>'
 					o = curBreakRow + o // prepend current row to main table
 				}
-				o = '</div><div id="BreakTableContainer" class="'+RTLclass+'"><div style="padding: 0.25em"></div>' + o // prepend opening div, include padding
+				o = '</div><div id="BreakTableContainer" class="'+RTLclass+tintClass+' BreakLong"'+tintStyle+' onclick="breakdownBoxClick(event)"><div style="padding: 0.25em"></div>' + o // prepend opening div, include padding
 			}
 			o = oStart + o // prepend phrase, word/letter count
 			if (optCompactBreakdown == true) {
-				o += '<div id="BreakSumLong"><span class="breakSumDark">' + curCipher.sumArr.reduce(getSum) + ' </span>'
-				o += '<span class="breakCipher" style="'+curCiphCol+'">' + curCipher.cipherName + gemCalcModeLabel(curCipher) + '</span></div></div>'
+				// Tags whichever row ends up last so the total can share its line
+				// (styles.css: .BreakTableRowLast switches from block to inline-
+				// table) instead of always dropping to a new row of its own - a
+				// plain string search rather than tracking it through the LTR/RTL
+				// branches above, since both funnel through this one join point
+				// regardless of which one actually built the last row.
+				var lastRowMark = 'class="BreakTableRow"'
+				var lastRowAt = o.lastIndexOf(lastRowMark)
+				if (lastRowAt !== -1) o = o.slice(0, lastRowAt) + 'class="BreakTableRow BreakTableRowLast"' + o.slice(lastRowAt + lastRowMark.length)
+				// total and cypher name stay paired on the same line at the bottom of
+				// the box - sharing the last row's line when there's room, dropping to
+				// a line of their own together when there isn't (never separately)
+				o += '<div id="BreakSumLong">' + eqSign + '<span class="breakSumDark">' + curCipher.sumArr.reduce(getSum) + '</span>' + (breakdownTintOn ? ' <span class="breakCipher" style="'+curCiphCol+'">' + curCipher.cipherName + gemCalcModeLabel(curCipher) + '</span>' : '') + '</div></div>'
 			} else {
 				o += '<div style="padding: 0.5em"></div>'
 			}
@@ -265,14 +306,39 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 		$('#BreakTableContainer').prepend(o) // insert in the beginning of the table
 	}
 
-	oo = 'background: var(--body-bg-accent);'
-	if (optGradientCharts) {
-		oo = 'background: '+bgCol+' -webkit-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));'
-		oo += 'background: '+bgCol+' -o-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));'
-		oo += 'background: '+bgCol+' -moz-linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));'
-		oo += 'background: '+bgCol+' linear-gradient(0deg,'+curGradCol+', rgba(0,0,0,0.0));'
+}
+
+// The classic gradient-background look is on by default; clicking empty
+// space in the box (not a letter/value/sum - see breakdownBoxClick() below)
+// switches to the plainer, block-free one instead. Persists across re-
+// renders (every keystroke rebuilds this box), so the state survives typing.
+var breakdownTintOn = true
+
+// #BreakTableContainer's onclick. A per-cell click (a letter, a value, a
+// word sum) toggles that cell's own .highlightCipherTable flag - a much
+// older feature (init-variables.js, ".ChartVal, .BreakChar, .BreakVal,
+// .BreakValDark, .BreakWordSum") that stopped working once the container
+// itself gained an onclick: that handler is registered on <body> and only
+// fires once the click's bubble reaches it, but toggleBreakdownTint()
+// rebuilds this whole box synchronously on the way there, so the bubble
+// never arrives. Handling both cases in one place, keyed off the actual
+// click target, sidesteps that ordering problem entirely instead of
+// fighting it with stopPropagation().
+function breakdownBoxClick(event) {
+	var cellClasses = ["BreakChar", "BreakVal", "BreakValDark", "BreakWordSum"]
+	var t = event.target
+	for (var i = 0; i < cellClasses.length; i++) {
+		if (t.classList.contains(cellClasses[i])) {
+			t.classList.toggle("highlightCipherTable")
+			return
+		}
 	}
-	$("#BreakTableContainer").attr("style", oo);
+	toggleBreakdownTint()
+}
+
+function toggleBreakdownTint() {
+	breakdownTintOn = !breakdownTintOn
+	updateWordBreakdown(breakCipher, false, false) // repaint with the new state
 }
 
 function buildLongBreakdown(curCipher) {

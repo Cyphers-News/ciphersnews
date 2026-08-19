@@ -17,7 +17,7 @@ var SUPABASE_ANON_KEY = "sb_publishable_7_PpZJAZKxxw8qCYSlQ66Q_MzCUSp4_"
 
 // Where Supabase should send users back to after Discord sign-in or after
 // clicking a password-reset link. Derived from wherever the site is served, so
-// it works on localhost and on cyphers.news without editing.
+// it works on localhost and on ciphers.news without editing.
 function authSiteUrl(path) {
 	var base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, "/")
 	return base + (path || "")
