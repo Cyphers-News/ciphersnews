@@ -114,6 +114,16 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 			oStart += '<div class="LetterCounts">' + curCipher.LetterCount + acl + curCipher.WordCount + acw + '</div>'
 		}
 
+		// Same "phrase = value (cipher name)" line every other cipher shows
+		// above its breakdown box when this option is on - missed the first
+		// time round since this branch skips straight to the equation card.
+		if (optCompactBreakdown == true) {
+			var simplePhr = (optAllowPhraseComments) ? sValNoComments() : sVal()
+			oStart += '<div id="SimpleBreak">'
+			oStart += '<span class="breakPhrase">' + simplePhr + '</span><span class="breakPhrase"> = </span><span class="breakSum">' + breakPhraseTotal + ' </span>'
+			oStart += '<span class="breakCipher"><font style="'+curCiphCol+'"> (' + curCipher.cipherName + ')</font></span></div>'
+		}
+
 		var o = '<div id="BreakTableContainer" class="'+tintClass+' BreakShort" '+tintStyle+' onclick="breakdownBoxClick(event)">'
 		o += '<div class="BasedAtlanteanEquation">((<span style="'+curCiphCol+'">' + curCipher.atlanteanES + '</span> - <span style="'+curCiphCol+'">' + curCipher.atlanteanAQ + '</span>) = <span style="'+curCiphCol+'">' + curCipher.atlanteanDiff + '</span>) / 9 = <span class="breakSum" style="'+curCiphCol+'">' + breakPhraseTotal + '</span></div>'
 		o += cipherNameFooter

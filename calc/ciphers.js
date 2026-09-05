@@ -35,7 +35,7 @@ cipherList = [
 		[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
 		[1,2,3,4,5,6,7,8,9,1,2,3,4,5,6,7,8,9,1,2,3,4,5,6,7,8],
 		true,
-		true,
+		false,
 		false
 	),
 
@@ -2022,7 +2022,7 @@ cipherList = [
 		[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
 		[1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800],
 		true,
-		false,
+		true,
 		false
 	),
 
@@ -2176,10 +2176,10 @@ var cipherPinnedOrder = [
 	// CCRU is not in alphabeticalCipherCategories, so without a pin it would
 	// keep cipherList's declaration order. Every member is named here to fix
 	// the exact display order the site ships with, not just the ones that
-	// would otherwise land somewhere unexpected. Based Atlanteanism appended
-	// at the end rather than reshuffled in: the other eight keep the exact
-	// relative order they already had.
-	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Reduction", "Standard", "Based Atlanteanism"] },
+	// would otherwise land somewhere unexpected. Based Atlanteanism takes
+	// Reduction's old slot (on by default there instead) - Reduction moves to
+	// the end, off by default now but still selectable in this same tab.
+	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Based Atlanteanism", "Standard", "Reduction"] },
 	// Archaic Alphanumeric pinned to lead the category on request, even though
 	// true alphabetical order (which Alphanumeric otherwise follows, see
 	// alphabeticalCipherCategories above) would put it after the "Alphanumeric
