@@ -423,18 +423,22 @@ function ciphSearchMark(name, q) {
 var cipherCatSpecial = {
 	"Elizabethan": {
 		note: "Archaic English from the 15-1600s:",
-		subNote: "Cyphers attributed to Francis Bacon:",
-		pinned: ["Bacon Kaye", "Modern Kaye"]
+		groups: [
+			{ note: "Cyphers attributed to Francis Bacon:", names: ["Bacon Kaye", "Modern Kaye"] }
+		]
 	},
 	"CCRU": {
 		note: "Attributed to the CCRU during y2k:",
-		pinned: ["Standard", "Synx"],
-		// one short note per pinned cypher instead of a shared subNote, each
-		// directly above its own checkbox
-		pinnedNotes: {
-			"Standard": "Historical english gematria cipher:",
-			"Synx": "Modern cipher, discovered in 2024:"
-		}
+		// Only the cyphers actually attributed to the CCRU/Xenocosmography
+		// lineage stay under the note above (Alphanumeric Qabbala, Numeric
+		// QWERTY, QWERTY, Based Atlanteanism - whatever else is in the category
+		// and not named in a group below). Each group below gets its own note
+		// and its own table - Synx keeps the individual callout it has always
+		// had, while the rest share one note instead of each repeating it.
+		groups: [
+			{ note: "Historical english gematria cyphers:", names: ["Ordinal", "Satanic Gematria", "Reduction", "Standard"] },
+			{ note: "Modern cipher, discovered in 2024:", names: ["Synx"] }
+		]
 	}
 }
 
@@ -455,6 +459,16 @@ function displayCipherCatDetailed(curCat) {
 	}
 	var o = ""
 	var special = cipherCatSpecial[curCat]
+
+	// Every group's names, flattened once: excluded from the default list
+	// below and looked up again per group further down. A cypher can belong
+	// to at most one group - order in cipherCatSpecial decides which if it's
+	// listed twice.
+	var pinnedNames = []
+	if (special && special.groups) {
+		for (var g = 0; g < special.groups.length; g++) pinnedNames = pinnedNames.concat(special.groups[g].names)
+	}
+
 	if (navigator.maxTouchPoints > 1) {
 		o += '<input class="intBtn3" type="button" value="Toggle Category" style="width: 100%; margin-top: 0.1em" onclick="toggleCipherCategory(&quot;'+curCat+'&quot;)">'
 		o += '<div style="padding: 0.25em;"></div>'
@@ -463,30 +477,28 @@ function displayCipherCatDetailed(curCat) {
 
 	o += '<table class="cipherCatDetails"><tbody>'
 	for (i = 0; i < cipherList.length; i++) {
-		if (cipherList[i].cipherCategory == curCat && !(special && special.pinned.indexOf(cipherList[i].cipherName) !== -1)) {
+		if (cipherList[i].cipherCategory == curCat && pinnedNames.indexOf(cipherList[i].cipherName) === -1) {
 			o += cipherCheckboxRow(i)
 		}
 	}
 	o += '</tbody></table>'
 
-	if (special && special.pinnedNotes) {
-		// each pinned cypher gets its own short note directly above its own
-		// checkbox, rather than one note shared across all of them
-		for (var p = 0; p < special.pinned.length; p++) {
-			var name = special.pinned[p]
-			var idx = cipherList.findIndex(function (c) { return c.cipherCategory === curCat && c.cipherName === name })
-			if (idx === -1) continue
-			if (special.pinnedNotes[name]) o += '<div class="ciphCatNote">' + special.pinnedNotes[name] + '</div>'
-			o += '<table class="cipherCatDetails"><tbody>' + cipherCheckboxRow(idx) + '</tbody></table>'
+	// Each group gets its own note and its own table, in the order given - a
+	// group of one cypher reads the same as the old "pinnedNotes" (its own
+	// note above its own checkbox); a group of several reads the same as the
+	// old shared "subNote" (one note above all of them).
+	if (special && special.groups) {
+		for (var g = 0; g < special.groups.length; g++) {
+			var grp = special.groups[g]
+			var rows = ''
+			for (var n = 0; n < grp.names.length; n++) {
+				var idx = cipherList.findIndex(function (c) { return c.cipherCategory === curCat && c.cipherName === grp.names[n] })
+				if (idx !== -1) rows += cipherCheckboxRow(idx)
+			}
+			if (rows === '') continue
+			if (grp.note) o += '<div class="ciphCatNote">' + grp.note + '</div>'
+			o += '<table class="cipherCatDetails"><tbody>' + rows + '</tbody></table>'
 		}
-	} else if (special && special.subNote) {
-		o += '<div class="ciphCatNote">' + special.subNote + '</div>'
-		o += '<table class="cipherCatDetails"><tbody>'
-		for (var p = 0; p < special.pinned.length; p++) {
-			var idx = cipherList.findIndex(function (c) { return c.cipherCategory === curCat && c.cipherName === special.pinned[p] })
-			if (idx !== -1) o += cipherCheckboxRow(idx)
-		}
-		o += '</tbody></table>'
 	}
 
 	document.getElementById("menuCiphCatDetailsArea").innerHTML = o

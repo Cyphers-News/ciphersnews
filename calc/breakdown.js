@@ -99,6 +99,30 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 		curCipher.calcBreakdown(sVal()) // calculate breakdown for current phrase
 	}
 
+	// Based Atlanteanism's result isn't read off its nominal letter table (see
+	// ciphers.js), so it gets its own render here too: the
+	// "((ES - AQ) = diff) / 9 = result" equation from basedatlantis.neocities.org
+	// instead of a per-letter table.
+	if (curCipher.cipherName === "Based Atlanteanism" && curCipher.sumArr.length > 0) {
+		breakPhraseText = (optAllowPhraseComments) ? sValNoComments() : sVal()
+		breakPhraseTotal = curCipher.sumArr.reduce(getSum)
+
+		var oStart = ''
+		if (optLetterWordCount == true) {
+			if (curCipher.LetterCount > 1 || curCipher.LetterCount == 0) {acl = " letters, "} else {acl = " letter, "}
+			if (curCipher.WordCount > 1) {acw = " words"} else {acw = " word"}
+			oStart += '<div class="LetterCounts">' + curCipher.LetterCount + acl + curCipher.WordCount + acw + '</div>'
+		}
+
+		var o = '<div id="BreakTableContainer" class="'+tintClass+' BreakShort" '+tintStyle+' onclick="breakdownBoxClick(event)">'
+		o += '<div class="BasedAtlanteanEquation">((<span style="'+curCiphCol+'">' + curCipher.atlanteanES + '</span> - <span style="'+curCiphCol+'">' + curCipher.atlanteanAQ + '</span>) = <span style="'+curCiphCol+'">' + curCipher.atlanteanDiff + '</span>) / 9 = <span class="breakSum" style="'+curCiphCol+'">' + breakPhraseTotal + '</span></div>'
+		o += cipherNameFooter
+		o += '</div>'
+
+		document.getElementById("BreakdownSpot").innerHTML = oStart + o
+		return
+	}
+
 	if (curCipher.sumArr.length > 0) {
 
 		// remember what this breakdown represents; the phrase box is cleared on

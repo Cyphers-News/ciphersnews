@@ -1127,6 +1127,15 @@ body {
 	color: var(--font-white-1);
 	font-weight: 700;
 }
+/* Based Atlanteanism's "((ES - AQ) = diff) / 9 = result" line (breakdown.js) -
+   a derived cipher with no per-letter table, so this replaces that grid
+   entirely rather than sitting alongside it. */
+.BasedAtlanteanEquation {
+	font-size: 115%;
+	font-weight: 500;
+	font-family: var(--font-family-mono), "Arial", sans-serif;
+	padding: 0.3em 0.4em;
+}
 /* the in-box long-phrase total - always white now (not cypher-coloured, see
    breakdown.js), same as .BreakPhraseSum below */
 .breakSumDark {

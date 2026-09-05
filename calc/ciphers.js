@@ -2005,8 +2005,96 @@ cipherList = [
 		false
 	),
 
+	// Derived rather than a plain substitution cipher: ((ES - AQ) = diff) / 9,
+	// per https://basedatlantis.neocities.org/ - reproduced from that site's
+	// own source (view-source, checked 2026-09-05), not from the name alone:
+	// ES turned out to be the plain a=1..i=9,j=10..r=90,s=100..z=800 table
+	// (same as our "Standard" cipher), not "English Sumerian" as the initials
+	// first suggested. That table is used here as cArr/vArr too, so the Cipher
+	// Chart has something real to draw and a saved workspace can round-trip it
+	// (ciphersFromListBody() in gematria.js drops any cipher whose cArr/vArr
+	// come back empty) - but it is never read for the actual result, which
+	// applyBasedAtlanteanismOverride() below computes independently.
+	new cipher(
+		"Based Atlanteanism",
+		"CCRU",
+		168, 65, 42,
+		[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
+		[1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800],
+		true,
+		false,
+		false
+	),
 
 ]
+
+// a=1..i=9, j=10..r=90 (tens), s=100..z=800 (hundreds) - basedatlantis's "ES"
+function atlanteanESValue(pos) {
+	if (pos <= 9) return pos
+	if (pos <= 18) return 10 * (pos - 9)
+	return 100 * (pos - 18)
+}
+
+// basedatlantis's "AQ": a=10..z=35
+function atlanteanAQValue(pos) { return pos + 9 }
+
+// Runs the two little per-letter tables from basedatlantis.neocities.org
+// itself (getAQValue/getESValue in that site's source) rather than delegating
+// to our own Standard/Alphanumeric Qabbala ciphers, since those go through
+// this app's generic number-handling options (optNumCalcMethod etc) and would
+// drift from the reference site's plain per-character sum for phrases
+// containing digits. Matches that site character-for-character: a digit
+// counts as itself on both sides (so it never affects the ES-AQ difference),
+// any other non-letter is skipped entirely rather than treated as a word
+// break, and the result is left exactly as JS division leaves it - no
+// rounding, since the site does not round either.
+function atlanteanTotals(phrase) {
+	var totalES = 0, totalAQ = 0
+	for (var i = 0; i < phrase.length; i++) {
+		var ch = phrase[i]
+		if (ch >= "0" && ch <= "9") {
+			var d = Number(ch)
+			totalES += d; totalAQ += d
+			continue
+		}
+		var lower = ch.toLowerCase()
+		var pos = lower.charCodeAt(0) - 97 + 1 // a=1..z=26
+		if (pos < 1 || pos > 26) continue // not a-z, skip (spaces, punctuation, etc)
+		totalES += atlanteanESValue(pos)
+		totalAQ += atlanteanAQValue(pos)
+	}
+	return { es: totalES, aq: totalAQ, diff: totalES - totalAQ, ba: (totalES - totalAQ) / 9 }
+}
+
+// A saved workspace rebuilds every cipher from scratch via cipherFromArgString
+// (gematria.js), which only knows the ten plain constructor arguments - it has
+// no way to reconstruct a method override, so calcGematria/calcBreakdown on
+// the rebuilt "Based Atlanteanism" would silently fall back to its nominal
+// letter table instead of the real formula. Called once below for the initial
+// load, and again from applyCipherOrdering() - the same re-run-after-any-
+// rebuild hook normaliseCipherCategories() etc already rely on - so the
+// override always lands on whichever instance currently sits in cipherList.
+function applyBasedAtlanteanismOverride() {
+	var atlantean = cipherList.find(function (c) { return c.cipherName === "Based Atlanteanism" })
+	if (!atlantean) return
+
+	atlantean.calcGematria = function (phrase) { return atlanteanTotals(phrase).ba }
+
+	// Mirrors how a wheelCipher's calcBreakdown skips the per-letter grid: there
+	// is no letter-by-letter table to show, so sumArr gets one entry (the whole
+	// result) and cp/cv stay empty. The three intermediate numbers are stashed
+	// on the instance too, so breakdown.js can render the full
+	// "((ES - AQ) = diff) / 9 = result" equation instead of just the total.
+	atlantean.calcBreakdown = function (phrase) {
+		this.cp = []; this.cv = []; this.curNum = ""
+		this.LetterCount = phrase.replace(/\s/g, "").length
+		this.WordCount = phrase.trim().length ? phrase.trim().split(/\s+/).length : 0
+		var t = atlanteanTotals(phrase)
+		this.atlanteanES = t.es; this.atlanteanAQ = t.aq; this.atlanteanDiff = t.diff
+		this.sumArr = [t.ba]
+	}
+}
+applyBasedAtlanteanismOverride()
 
 // ---- cipher list ordering ------------------------------------------------
 //
@@ -2088,8 +2176,10 @@ var cipherPinnedOrder = [
 	// CCRU is not in alphabeticalCipherCategories, so without a pin it would
 	// keep cipherList's declaration order. Every member is named here to fix
 	// the exact display order the site ships with, not just the ones that
-	// would otherwise land somewhere unexpected.
-	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Reduction", "Standard"] },
+	// would otherwise land somewhere unexpected. Based Atlanteanism appended
+	// at the end rather than reshuffled in: the other eight keep the exact
+	// relative order they already had.
+	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Reduction", "Standard", "Based Atlanteanism"] },
 	// Archaic Alphanumeric pinned to lead the category on request, even though
 	// true alphabetical order (which Alphanumeric otherwise follows, see
 	// alphabeticalCipherCategories above) would put it after the "Alphanumeric
@@ -2128,6 +2218,7 @@ function applyCipherOrdering() {
 	orderCipherCategories()
 	sortCipherCategoriesAlphabetically()
 	pinCipherOrder() // last: it overrides the alphabetical pass where they overlap
+	applyBasedAtlanteanismOverride() // reattach - a rebuilt cipherList holds a fresh instance
 }
 
 applyCipherOrdering()

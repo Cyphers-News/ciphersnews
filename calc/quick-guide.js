@@ -445,6 +445,7 @@ var cipherInfoText = {
 	"Archaic R Standard": "🏰 The Z-to-A reversal of Archaic Standard, run across the 24-letter Elizabethan alphabet.",
 
 	// ---- Extra ----
+	"Based Atlanteanism": "🔺 Not a letter-value table: takes the phrase&rsquo;s total under the same a=1&hellip;i=9, j=10&hellip;r=90, s=100&hellip;z=800 table as Standard, subtracts its Alphanumeric Qabbala total, then divides by 9. Formula and name from <a href=\"https://basedatlantis.neocities.org/\" target=\"_blank\">basedatlantis.neocities.org</a>.",
 	"ASCII Lowercase": "⌨️ Each letter&rsquo;s value is its own lowercase ASCII/Unicode code point (a=97&hellip;z=122) - the raw character code used as the number.",
 	"ASCII Uppercase": "⌨️ Each letter&rsquo;s value is its uppercase ASCII/Unicode code point (A=65&hellip;Z=90), even though the cypher is entered in lowercase.",
 	"Capitals Mixed": "🔢 Lowercase and uppercase letters interleaved (a, A, b, B, c, C&hellip;), each pair counting up together - both cases of the same letter share consecutive values instead of one case following the other.",
