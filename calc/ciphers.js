@@ -2010,17 +2010,26 @@ cipherList = [
 	// own source (view-source, checked 2026-09-05), not from the name alone:
 	// ES turned out to be the plain a=1..i=9,j=10..r=90,s=100..z=800 table
 	// (same as our "Standard" cipher), not "English Sumerian" as the initials
-	// first suggested. That table is used here as cArr/vArr too, so the Cipher
-	// Chart has something real to draw and a saved workspace can round-trip it
-	// (ciphersFromListBody() in gematria.js drops any cipher whose cArr/vArr
-	// come back empty) - but it is never read for the actual result, which
-	// applyBasedAtlanteanismOverride() below computes independently.
+	// first suggested.
+	//
+	// The vArr below is each letter's own (ES - AQ) / 9 - e.g. a: (1-10)/9=-1,
+	// z: (800-35)/9=85 - which the Cipher Chart draws letter by letter. Digits
+	// are left out of cArr entirely: the reference site counts a digit as
+	// itself on both the ES and AQ side, cancelling to a 0 contribution either
+	// way, same as this cipher simply skipping a character it has no value
+	// for. A saved workspace can round-trip this table too (ciphersFromListBody()
+	// in gematria.js drops any cipher whose cArr/vArr come back empty) - but it
+	// is never read for the actual result, which
+	// applyBasedAtlanteanismOverride() below computes independently, since
+	// summing this table letter-by-letter would silently stop matching the
+	// reference site the moment the table above and the formula below drift
+	// out of sync with each other.
 	new cipher(
 		"Based Atlanteanism",
 		"CCRU",
 		168, 65, 42,
 		[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
-		[1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800],
+		[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6,7,8,19,30,41,52,63,74,85],
 		true,
 		true,
 		false
