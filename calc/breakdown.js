@@ -99,11 +99,14 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 		curCipher.calcBreakdown(sVal()) // calculate breakdown for current phrase
 	}
 
-	// Based Atlanteanism's result isn't read off its nominal letter table (see
-	// ciphers.js), so it gets its own render here too: the
-	// "((ES - AQ) = diff) / 9 = result" equation from basedatlantis.neocities.org
-	// instead of a per-letter table.
-	if (curCipher.cipherName === "Based Atlanteanism" && curCipher.sumArr.length > 0) {
+	// Neither Based Atlanteanism cipher's result is read off its nominal
+	// letter table (see ciphers.js), so they get their own render here too:
+	// an equation from basedatlantis.neocities.org instead of a per-letter
+	// table. Reduced shows the full "((ES - AQ) = diff) / 9 = result"; the
+	// undivided one drops the outer parens and the "/ 9" - its result is the
+	// diff itself.
+	var isAtlantean = curCipher.cipherName === "Based Atlanteanism" || curCipher.cipherName === "Based Atlanteanism Reduced"
+	if (isAtlantean && curCipher.sumArr.length > 0) {
 		breakPhraseText = (optAllowPhraseComments) ? sValNoComments() : sVal()
 		breakPhraseTotal = curCipher.sumArr.reduce(getSum)
 
@@ -124,8 +127,15 @@ function updateWordBreakdown(impName = breakCipher, impBool = false, chartUpd = 
 			oStart += '<span class="breakCipher"><font style="'+curCiphCol+'"> (' + curCipher.cipherName + ')</font></span></div>'
 		}
 
+		var equation
+		if (curCipher.cipherName === "Based Atlanteanism Reduced") {
+			equation = '((<span style="'+curCiphCol+'">' + curCipher.atlanteanES + '</span> - <span style="'+curCiphCol+'">' + curCipher.atlanteanAQ + '</span>) = <span style="'+curCiphCol+'">' + curCipher.atlanteanDiff + '</span>) / 9 = <span class="breakSum" style="'+curCiphCol+'">' + breakPhraseTotal + '</span>'
+		} else {
+			equation = '(<span style="'+curCiphCol+'">' + curCipher.atlanteanES + '</span> - <span style="'+curCiphCol+'">' + curCipher.atlanteanAQ + '</span>) = <span class="breakSum" style="'+curCiphCol+'">' + breakPhraseTotal + '</span>'
+		}
+
 		var o = '<div id="BreakTableContainer" class="'+tintClass+' BreakShort" '+tintStyle+' onclick="breakdownBoxClick(event)">'
-		o += '<div class="BasedAtlanteanEquation">((<span style="'+curCiphCol+'">' + curCipher.atlanteanES + '</span> - <span style="'+curCiphCol+'">' + curCipher.atlanteanAQ + '</span>) = <span style="'+curCiphCol+'">' + curCipher.atlanteanDiff + '</span>) / 9 = <span class="breakSum" style="'+curCiphCol+'">' + breakPhraseTotal + '</span></div>'
+		o += '<div class="BasedAtlanteanEquation">' + equation + '</div>'
 		o += cipherNameFooter
 		o += '</div>'
 
