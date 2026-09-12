@@ -2007,7 +2007,7 @@ cipherList = [
 
 	// Two related derived ciphers, per https://basedatlantis.neocities.org/
 	// (view-source, checked 2026-09-05): "Based Atlanteanism" is the raw
-	// (ES - AQ) difference; "Based Atlanteanism Reduced" divides that by 9,
+	// (ES - AQ) difference; "Based Atlanteanism Denovated" divides that by 9,
 	// the ((ES - AQ) = diff) / 9 formula this started out as before the split
 	// into two cyphers. ES turned out to be the plain a=1..i=9,j=10..r=90,
 	// s=100..z=800 table (same as our "Standard" cipher), not "English
@@ -2015,7 +2015,7 @@ cipherList = [
 	//
 	// Neither is a plain substitution cipher - both are overridden below,
 	// right after cipherList closes - but each still carries a real vArr (each
-	// letter's own contribution: (ES-AQ) here, (ES-AQ)/9 on the Reduced one)
+	// letter's own contribution: (ES-AQ) here, (ES-AQ)/9 on the Denovated one)
 	// so the Cipher Chart has something honest to draw and a saved workspace
 	// can round-trip them (ciphersFromListBody() in gematria.js drops any
 	// cipher whose cArr/vArr come back empty). That table is never read for
@@ -2035,7 +2035,7 @@ cipherList = [
 	),
 
 	new cipher(
-		"Based Atlanteanism Reduced",
+		"Based Atlanteanism Denovated",
 		"CCRU",
 		168, 65, 42,
 		[97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122],
@@ -2088,7 +2088,7 @@ function atlanteanTotals(phrase) {
 // A saved workspace rebuilds every cipher from scratch via cipherFromArgString
 // (gematria.js), which only knows the ten plain constructor arguments - it has
 // no way to reconstruct a method override, so calcGematria/calcBreakdown on a
-// rebuilt "Based Atlanteanism"/"Based Atlanteanism Reduced" would silently
+// rebuilt "Based Atlanteanism"/"Based Atlanteanism Denovated" would silently
 // fall back to its nominal letter table instead of the real formula. Called
 // once below for the initial load, and again from applyCipherOrdering() - the
 // same re-run-after-any-rebuild hook normaliseCipherCategories() etc already
@@ -2096,7 +2096,7 @@ function atlanteanTotals(phrase) {
 // in cipherList.
 function applyBasedAtlanteanismOverride() {
 	var undivided = cipherList.find(function (c) { return c.cipherName === "Based Atlanteanism" })
-	var reduced = cipherList.find(function (c) { return c.cipherName === "Based Atlanteanism Reduced" })
+	var reduced = cipherList.find(function (c) { return c.cipherName === "Based Atlanteanism Denovated" })
 
 	// Mirrors how a wheelCipher's calcBreakdown skips the per-letter grid:
 	// there is no letter-by-letter table to show, so sumArr gets one entry
@@ -2212,9 +2212,9 @@ var cipherPinnedOrder = [
 	// would otherwise land somewhere unexpected. Based Atlanteanism takes
 	// Reduction's old slot (on by default there instead) - Reduction moves to
 	// the end, off by default now but still selectable in this same tab.
-	// Based Atlanteanism Reduced sits right after Based Atlanteanism, off by
+	// Based Atlanteanism Denovated sits right after Based Atlanteanism, off by
 	// default like Reduction.
-	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Based Atlanteanism", "Based Atlanteanism Reduced", "Standard", "Reduction"] },
+	{ category: "CCRU", names: ["Alphanumeric Qabbala", "Ordinal", "Numeric QWERTY", "QWERTY", "Synx", "Satanic Gematria", "Based Atlanteanism", "Based Atlanteanism Denovated", "Standard", "Reduction"] },
 	// Archaic Alphanumeric pinned to lead the category on request, even though
 	// true alphabetical order (which Alphanumeric otherwise follows, see
 	// alphabeticalCipherCategories above) would put it after the "Alphanumeric
