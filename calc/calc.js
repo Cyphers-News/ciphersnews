@@ -442,9 +442,19 @@ var cipherCatSpecial = {
 	}
 }
 
+// Display-only shorthand for the Cyphers menu's checkbox list, where a long
+// name is what was overflowing the fixed-width column (see .ciphCheckboxLabel2
+// in styles.css). cipherName itself is untouched, so the full name still shows
+// everywhere else - the results grid, breakdown headline, History Table, CSV
+// export, search results, etc all read cipherList[i].cipherName directly.
+var ciphCheckboxDisplayName = {
+	"Based Atlanteanism Denovated": "BA Denovated"
+}
+
 function cipherCheckboxRow(i) {
 	var chk = cipherList[i].enabled ? " checked" : ""
-	return '<tr><td><label class="chkLabel ciphCheckboxLabel2">'+cipherList[i].cipherName+'<input type="checkbox" id="cipher_chkbox'+i+'" onclick="toggleCipher('+i+')"'+chk+'><span class="custChkBox"></span></label></td></tr>'
+	var name = ciphCheckboxDisplayName[cipherList[i].cipherName] || cipherList[i].cipherName
+	return '<tr><td><label class="chkLabel ciphCheckboxLabel2">'+name+'<input type="checkbox" id="cipher_chkbox'+i+'" onclick="toggleCipher('+i+')"'+chk+'><span class="custChkBox"></span></label></td></tr>'
 }
 
 function displayCipherCatDetailed(curCat) {
