@@ -606,6 +606,7 @@ $(document).ready(function(){
 					createFindMatchesMenu()
 					createDateCalcMenu()
 					createAstrologyMenu()
+					createNumogramButton()
 					createExportMenu()
 					createAboutMenu()
 					createProfileMenu()

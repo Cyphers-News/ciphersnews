@@ -246,6 +246,7 @@ function createCalcMenus() {
 	createFindMatchesMenu()
 	createDateCalcMenu()
 	createAstrologyMenu()
+	createNumogramButton()
 	createExportMenu()
 	createAboutMenu()
 	createProfileMenu()
@@ -260,6 +261,7 @@ function closeAllOpenedMenus() {
 	if (encodingMenuOpened) toggleEncodingMenu() // Encoding
 	if (typeof astroMenuOpened !== "undefined" && astroMenuOpened) toggleAstroMenu() // Astrology
 	if (typeof profileMenuOpened !== "undefined" && profileMenuOpened) toggleProfileMenu() // Profile
+	if (typeof numogramMenuOpened !== "undefined" && numogramMenuOpened) toggleNumogramMenu() // Numogram
 }
 
 // ========================= Random Colors ==========================
@@ -1234,6 +1236,16 @@ function createAstrologyMenu() {
 	var o = document.getElementById("calcOptionsPanel").innerHTML
 	o += '<div class="dropdown">'
 	o += '<button class="dropbtn dateCalcTab" onclick="toggleAstroMenu()"><span class="labFull">Astro</span><span class="labShort">Astro</span></button>'
+	o += '</div>'
+	document.getElementById("calcOptionsPanel").innerHTML = o
+}
+
+// Numogram tab (numogram.js). Same tab markup as Date Calc / Astro: the tab
+// itself opens the panel, there is no dropdown.
+function createNumogramButton() {
+	var o = document.getElementById("calcOptionsPanel").innerHTML
+	o += '<div class="dropdown">'
+	o += '<button class="dropbtn dateCalcTab" onclick="toggleNumogramMenu()"><span class="labFull">Numogram</span><span class="labShort">Numogram</span></button>'
 	o += '</div>'
 	document.getElementById("calcOptionsPanel").innerHTML = o
 }
