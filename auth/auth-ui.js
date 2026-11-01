@@ -88,6 +88,12 @@ function renderAuthNav() {
 		else o += '<span class="authNavAvatar authNavAvatarFallback">' + authEsc(authDisplayName().charAt(0).toUpperCase()) + '</span>'
 		o += '<span class="authNavName">' + authEsc(authDisplayName()) + '</span>'
 		o += '</a>'
+		// A member reload restores account-backed history, so it cannot also be the
+		// way to start with an empty table. Keep this explicit destructive action
+		// on the calculator only; its handler requires a second deliberate click.
+		if (inApp) {
+			o += '<a class="authNavLink authNavHistoryClear" href="#" title="Clear saved phrase history" aria-label="Clear saved phrase history" onclick="return authNavClearHistory(this,event)">&#8635; Clear</a>'
+		}
 		// only drawn for admins, and only as a shortcut - admin.html checks for
 		// itself and every function it calls checks again in the database
 		if (typeof adminIsAdmin !== "undefined" && adminIsAdmin === true) {
@@ -96,6 +102,37 @@ function renderAuthNav() {
 		o += '<a class="authNavLink" href="#" onclick="authNavSignOut(event)">Logout</a>'
 	}
 	area.innerHTML = o
+}
+
+function authNavClearHistory(el, e) {
+	if (e) e.preventDefault()
+	var confirmed = (typeof profileConfirmClick === "function")
+		? profileConfirmClick(el, "Clear?")
+		: window.confirm("Clear your saved phrase history?")
+	if (!confirmed) return false
+
+	// Never race an in-flight account restore: stale rows could arrive after the
+	// clear and make it look as if the action failed.
+	if (typeof histSyncLoaded !== "undefined" && histSyncLoaded !== true) {
+		if (typeof displayCalcNotification === "function") displayCalcNotification("Wait for saved history to finish loading", 2600)
+		return false
+	}
+	if (typeof histSyncSaving !== "undefined" && histSyncSaving === true) {
+		if (typeof displayCalcNotification === "function") displayCalcNotification("Wait for saved history to finish saving", 2600)
+		return false
+	}
+
+	if (typeof phraseBoxKeypress === "function") phraseBoxKeypress(36)
+	if (typeof histSyncClearSaved === "function") {
+		histSyncClearSaved().then(function () {
+			if (typeof displayCalcNotification === "function") displayCalcNotification("Saved history cleared", 2200)
+		}).catch(function () {
+			if (typeof displayCalcNotification === "function") displayCalcNotification("History cleared here; saved copy could not be cleared", 3200)
+		})
+	} else if (typeof displayCalcNotification === "function") {
+		displayCalcNotification("History cleared here; saved copy is unavailable", 3200)
+	}
+	return false
 }
 
 function authNavSignOut(e) {
